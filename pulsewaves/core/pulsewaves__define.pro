@@ -75,8 +75,8 @@ void = { plsheader, $
   pulseSize       : 0UL, $                        ; Pulse size
   pulseCompress   : 0UL, $                        ; Pulse compression
   reserved        : 0ULL,  $                      ; Reserved
-  nvlrecords      : 0UL,   $                      ; Number of variable length records
-  navlrecords     : 0UL,   $                      ; Number of variable length records
+  nvlrecords      : 0UL,   $                      ; Number of Variable Length Records
+  navlrecords     : 0UL,   $                      ; Number of Append Variable Length Records
   tScale          : 0D, $                         ; T Scale Factor
   tOffset         : 0D, $                         ; T offset
   tMin            : 0ULL, $                       ; t minimum
@@ -195,16 +195,39 @@ Function pulsewaves::readPulse, inputFile
     ; Closing and re-opening the file to reinitialize the pointer
     Free_lun,inputLun
     Openr, inputLun, inputFile, /get_lun, /swap_if_big_endian
-    ; InitHeaderLAS, header, minorVersion
+
     self.out->print,1, "Reading file header..."
-    print, (*self.plsheader)
+    self.out->print,1, Strcompress("System identifier: " + String((*self.plsheader).systemID))
+    self.out->print,1, Strcompress("Generating goftware: " + String((*self.plsheader).softwareID))
+    self.out->print,1, Strcompress("Day of creation: " + String(Fix((*self.plsheader).year)))
+    self.out->print,1, Strcompress("Year of creation: " + String(Fix((*self.plsheader).day)))
+    self.out->print,1, Strcompress("Header size: " + String(Fix((*self.plsheader).headerSize)))   
+    self.out->print,1, Strcompress("Byte offset to pulses block: " + String((*self.plsheader).offsetPulse))
     self.out->print,1, Strcompress("File contains " + String((*self.plsheader).nPulses) + " pulses.")
-    self.out->print,1, Strcompress("Pulse data format: " + String(Fix((*self.plsheader).pulseFormat)))
-    self.out->print,1, "Initializing pulse structure..."
-    InitDataLAS, dataStr,  pointFormat = header.Pointformat
-    self.out->print,1, "Original point Structure description:"
-    ;obj->print,1, tag_names(dataStr);
-    self.out->printArray,1, Tag_names(dataStr)
+    self.out->print,1, Strcompress("Pulse format: " + String(Fix((*self.plsheader).pulseFormat)))
+    self.out->print,1, Strcompress("Pulse attributes: " + String((*self.plsheader).pulseAttrib) + " pulses.")
+    self.out->print,1, Strcompress("Pulse size: " + String((*self.plsheader).pulseSize) + " pulses.")
+    self.out->print,1, Strcompress("Pulse compression: " + String(Fix((*self.plsheader).pulseCompress)))
+    self.out->print,1, Strcompress("Number of Variable Length Records: " + String(Fix((*self.plsheader).nvlrecords)))
+    self.out->print,1, Strcompress("Number of Append Variable Length Records: " + String(Fix((*self.plsheader).navlrecords)))
+    self.out->print,1, Strcompress("T(ime) scale factor: " + String((*self.plsheader).tScale))
+    self.out->print,1, Strcompress("T(ime) offset: " + String((*self.plsheader).tOffset))
+    self.out->print,1, Strcompress("Minimum T(ime): " + String((*self.plsheader).tMin)) 
+    self.out->print,1, Strcompress("Maximum T(ime): " + String((*self.plsheader).tMax)) 
+    self.out->print,1, Strcompress("X scale factor: " + String((*self.plsheader).xScale)) 
+    self.out->print,1, Strcompress("Y scale factor: " + String((*self.plsheader).yScale))
+    self.out->print,1, Strcompress("Z scale factor: " + String((*self.plsheader).zScale))
+    self.Out->print,1, Strcompress("X offset factor: " + String((*self.plsheader).xOffset))
+    self.Out->print,1, Strcompress("Y offset factor: " + String((*self.plsheader).yOffset))
+    self.Out->print,1, Strcompress("Z offset factor: " + String((*self.plsheader).zOffset))   
+    self.out->print,1, Strcompress("X Minimum: " + String((*self.plsheader).xMin))
+    self.out->print,1, Strcompress("X Maximum: " + String((*self.plsheader).xMax))
+    self.Out->print,1, Strcompress("Y Minimum: " + String((*self.plsheader).yMin))
+    self.Out->print,1, Strcompress("Y Maximum: " + String((*self.plsheader).yMax))
+    self.Out->print,1, Strcompress("Z Minimum: " + String((*self.plsheader).zMin))
+    self.Out->print,1, Strcompress("Z Maximum: " + String((*self.plsheader).zMax))
+    
+;    (*self.initplsheader)
 
 
   Close, inputLun
