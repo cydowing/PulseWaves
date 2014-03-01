@@ -1,22 +1,24 @@
 ; docformat = 'rst'
 ;+
-; :Description:
-;    Describe the procedure.
+; This is an IDL implementation of the Open Source
+; PulseWaves format created by Martin Isenburg Creator
+; of LASTools and LASZip.
 ;
 ; :Category:
-; 	What is the general purpose of this method
+; 	READER, WRITER, WAVEFORM
 ;
 ; :Return:
 ; 	If any, what is the output of this method
 ;
 ;	:Uses:
-;		The call method
+;		plsObj = obj_new('pulsewaves', inputfile = '/Path/To/PLS/File')
 ;
 ;	:Example:
 ;		A quick example on how to use this method
 ;
 ; :History:
-; 	Development history
+; 	September 2013
+; 	 -First implementation
 ;
 ; :Author:
 ;   Antoine Cottin
@@ -24,6 +26,7 @@
 Pro pulsewaves__define
 
 void = { pulsewaves, $
+  plsFilePath   : "",$
   plsHeader     : ptr_new(),$
   plsvlrarray   : ptr_new(),$
   plspulserec   : ptr_new(),$
@@ -35,17 +38,110 @@ End
 
 
 
+;+
+;
+; Create an instance of the PulseWaves Class Object.
+;
+; :Categories:
+;   GENERAL
+;
+; :Returns:
+;   Return an instance of the PulseWaves Class Object.
+;
+; :Uses:
+;   plsObj = obj_new('pulsewaves', inputFile = '/Path/To/The/File.pls')
+;       
+; :Keywords:
+;    inputfile: in, required, type=string
+;     This is the fully qualified path to the file
+;    
+;  :Author:
+;     Antoine Cottin
+;
+;  :History:
+;     -01/03/2014: Creation
+;
+;-
 Function pulsewaves::init, inputfile = file
 
   Compile_opt idl2
   
   ; Checking the type of file, pls or wvs, and find the other accordingly
   
-  ; Read the file and put everything into the object structure
+  ; Initialazing data members
   self.plsHeader = ptr_new(self.initplsheader())
-  self.plspulserec = ptr_new(self.initpulserecord())
+  ;self.plspulserec = ptr_new(self.initpulserecord())
   self.out = obj_new('consoleoutput')
+  
+  ;Checking that the provided file exist
+  exist = File_test(file)
+  if exist eq 1 then self.plsFilePath = file else begin
+    while exist ne 1 do begin
+      self.out->print, 3, "File doesn't seems to exist..."
+      self.out->print, 3, "Please re-enter a file path string"
+      newPath = ""
+      read, newPath
+      print, newPath
+      exist = File_test(newPath)
+    endwhile
+    self.plsFilePath = newPath
+  endelse
+
+  
+  ; Loading data into data members
+  dum = self.readHeader()
+  if (*self.plsheader).nvlrecords ne 0 then dum = self.readVLR()
+  if (*self.plsheader).nPulses ne 0 then dum = self.readPulses()
+  if (*self.plsheader).navlrecords ne 0 then dum = self.readAVLR()
+  
   return, 1
+  
+End
+
+
+
+;+
+; Cleanup the object. This method is call automatically using the obj_destroy method.
+;
+; :Categories:
+;   GENERAL
+;
+; :Returns:
+;   Destroy the actual object
+;
+; :Uses:
+;   obj_destroy, Obj
+;
+; :Examples:
+;     setup the object
+;       plsObj = obj_new('pulsewaves', inputFile = '/Path/To/The/File.pls')
+;
+;     Destroying the object
+;       obj_destroy, plsObj
+;       
+;  :Author:
+;     Antoine Cottin
+;   
+;  :History:
+;     -01/03/2014: Creation
+;
+;-
+Function pulsewaves::cleanup
+
+  ; Removing the temporary files
+  self.out->print,1 , 'Destroying PulseWaves object...'
+  self.out->print,1 , 'Cleaning memory...'
+  plsFilePath = 0
+  ptr_free, $
+    self.plsHeader,$
+    self.plsvlrarray,$
+    self.plspulserec,$
+    self.plsavlrarray
+
+  ; Destroying the consoleOutput object
+  self.out->print,1 , 'Destroying remaining objects...'
+  self.out->print,1 , 'Bye :)'
+  obj_destroy, self.out
   
 End
 
@@ -157,24 +253,11 @@ End
 
 
 
-Function pulsewaves::readPulse, inputFile
+Function pulsewaves::readHeader
 
-
-  compile_opt idl2, logical_predicate
-
-  ; Testing the file name
-  fileTest = File_info(inputFile)
-  if fileTest.Exists eq 1 then begin
-    self.out->print,1, "Valid path and file name."
-  endif else begin
-    self.out->print, 3, "File doesn't seems to exist..."
-    self.out->print,3, "Please check your input."
-    self.out->print,3, "Program closing."
-    Return, 0
-  endelse
 
   ; Open the file
-  Openr, inputLun, inputFile, /get_lun, /swap_if_big_endian
+  Openr, inputLun, self.plsFilePath, /get_lun, /swap_if_big_endian
 
   ; Check if the file is a PLS file
   signature = Bytarr(16)
@@ -194,19 +277,21 @@ Function pulsewaves::readPulse, inputFile
 
     ; Closing and re-opening the file to reinitialize the pointer
     Free_lun,inputLun
-    Openr, inputLun, inputFile, /get_lun, /swap_if_big_endian
-
+    Openr, inputLun, self.plsFilePath, /get_lun, /swap_if_big_endian
+    ; Putting file data into data member
+    Readu, inputLun, (*self.plsheader)
+    
     self.out->print,1, "Reading file header..."
     self.out->print,1, Strcompress("System identifier: " + String((*self.plsheader).systemID))
     self.out->print,1, Strcompress("Generating goftware: " + String((*self.plsheader).softwareID))
-    self.out->print,1, Strcompress("Day of creation: " + String(Fix((*self.plsheader).year)))
-    self.out->print,1, Strcompress("Year of creation: " + String(Fix((*self.plsheader).day)))
+    self.out->print,1, Strcompress("Day of creation: " + String(Fix((*self.plsheader).day)))
+    self.out->print,1, Strcompress("Year of creation: " + String(Fix((*self.plsheader).year)))
     self.out->print,1, Strcompress("Header size: " + String(Fix((*self.plsheader).headerSize)))   
     self.out->print,1, Strcompress("Byte offset to pulses block: " + String((*self.plsheader).offsetPulse))
     self.out->print,1, Strcompress("File contains " + String((*self.plsheader).nPulses) + " pulses.")
     self.out->print,1, Strcompress("Pulse format: " + String(Fix((*self.plsheader).pulseFormat)))
-    self.out->print,1, Strcompress("Pulse attributes: " + String((*self.plsheader).pulseAttrib) + " pulses.")
-    self.out->print,1, Strcompress("Pulse size: " + String((*self.plsheader).pulseSize) + " pulses.")
+    self.out->print,1, Strcompress("Pulse attributes: " + String((*self.plsheader).pulseAttrib))
+    self.out->print,1, Strcompress("Pulse size: " + String((*self.plsheader).pulseSize) + " bytes.")
     self.out->print,1, Strcompress("Pulse compression: " + String(Fix((*self.plsheader).pulseCompress)))
     self.out->print,1, Strcompress("Number of Variable Length Records: " + String(Fix((*self.plsheader).nvlrecords)))
     self.out->print,1, Strcompress("Number of Append Variable Length Records: " + String(Fix((*self.plsheader).navlrecords)))
@@ -233,11 +318,31 @@ Function pulsewaves::readPulse, inputFile
   Close, inputLun
 
   Return, 1
-
-end
+  
+endif else begin
+  
+  
+endelse
 
 End
 
+
+
+Function pulsewaves::readVLR
+
+End
+
+
+
+Function pulsewaves::readPulses
+
+End
+
+
+Function pulsewaves::readAVLR
+
+
+End
 
 
 Function pulsewaves::writePulse
