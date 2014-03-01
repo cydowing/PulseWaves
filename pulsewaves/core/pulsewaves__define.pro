@@ -26,13 +26,16 @@
 Pro pulsewaves__define
 
 void = { pulsewaves, $
-  plsFilePath   : "",$
-  plsHeader     : ptr_new(),$
-  plsvlrarray   : ptr_new(),$
-  plspulserec   : ptr_new(),$
-  plspulseInd   : ptr_new(),$
-  plsavlrarray  : ptr_new(),$
-  out           : obj_new() $
+  plsFilePath   : "",$                ; Fully qualified path to the PLS file
+  wvsFilePath   : "",$                ; Fully qualified path to the WVS file
+  plsHeader     : ptr_new(),$         ; Pointer to the PLS Header data
+  plsVlrArray   : ptr_new(),$         ; Pointer to the Variable Length Records (in reading order - Header/Key)
+  plsPulseRec   : ptr_new(),$         ; Pointer to the records of the PLS file hold in the data member
+  plsPulseInd   : ptr_new(),$         ; Pointer to the index of the records from the PLS file hold in plsPulseRec
+  plsAvlrarray  : ptr_new(),$         ; Pointer to the Appned Variable Length Records (in reading order - Header/Key)
+  wvsHeader     : ptr_new(),$         ; Pointer to the header of the WVS file
+  wvsWaveRec    : ptr_new(),$         ; Pointer to the records of the WVS file corresponding to the records in plsPulseRec
+  out           : obj_new() $         ; Object that allow nice print out
 }
 
 End
@@ -76,7 +79,10 @@ Function pulsewaves::init, inputfile = file
   
   ;Checking that the provided file exist
   exist = File_test(file)
-  if exist eq 1 then self.plsFilePath = file else begin
+  if exist eq 1 then begin
+    self.plsFilePath = file
+    self.wvsFilePath = self.getWaveFileName(self.plsFilePath) 
+  endif else begin
     while exist ne 1 do begin
       self.out->print, 3, "File doesn't seems to exist..."
       self.out->print, 3, "Please re-enter a file path string"
@@ -86,8 +92,8 @@ Function pulsewaves::init, inputfile = file
       exist = File_test(newPath)
     endwhile
     self.plsFilePath = newPath
+    self.wvsFilePath = self.getWaveFileName(self.plsFilePath)
   endelse
-
   
   ; Loading data into data members
   dum = self.readHeader()
@@ -100,6 +106,19 @@ Function pulsewaves::init, inputfile = file
   return, 1
   
 End
+
+
+
+Function pulsewaves::getWaveFileName, plsfile
+
+  if strlowcase(!version.OS_NAME) eq "linux" or strlowcase(!version.OS_NAME) eq "mac os x" then spath='/' else spath='\'
+  sep=strcompress(strmid(spath, 0, 1,/reverse_offset))
+  path = file_dirname(plsfile)
+  file = file_basename(plsfile)
+  return, strcompress( path + spath + strmid(file, 0, strpos(file, '.', /reverse_search )) + '.wvs')
+
+End
+
 
 
 
@@ -140,6 +159,8 @@ Function pulsewaves::cleanup
     self.plsvlrarray,$
     self.plspulserec,$
     self.plspulseInd,$
+    self.wvsWaveRec,$
+    self.wvsHeader,$
     self.plsavlrarray
 
   ; Destroying the consoleOutput object
@@ -254,6 +275,21 @@ void = {pulserecord, $
 return, void
 
 End
+
+
+
+Function pulsewaves::initwvsheader
+
+void = {wvsheader, $
+  signature         : bytarr(16), $
+  compression       : 0UL, $
+  reserve           : bytarr(44) $
+  }
+  
+return, void
+
+End
+
 
 
 
