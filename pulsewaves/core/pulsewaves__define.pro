@@ -35,6 +35,7 @@ void = { pulsewaves, $
   plsAvlrarray  : ptr_new(),$         ; Pointer to the Appned Variable Length Records (in reading order - Header/Key)
   wvsHeader     : ptr_new(),$         ; Pointer to the header of the WVS file
   wvsWaveRec    : ptr_new(),$         ; Pointer to the records of the WVS file corresponding to the records in plsPulseRec
+  wvsWaveInd    : ptr_new(),$         ; Pointer to the index corresponding to the records in plsPulseRec
   out           : obj_new() $         ; Object that allow nice print out
 }
 
@@ -81,7 +82,7 @@ Function pulsewaves::init, inputfile = file
   exist = File_test(file)
   if exist eq 1 then begin
     self.plsFilePath = file
-    self.wvsFilePath = self.getWaveFileName(self.plsFilePath) 
+    self.wvsFilePath = self.getWaveFileName(self.plsFilePath)
   endif else begin
     while exist ne 1 do begin
       self.out->print, 3, "File doesn't seems to exist..."
@@ -98,7 +99,10 @@ Function pulsewaves::init, inputfile = file
   ; Loading data into data members
   dum = self.readHeader()
   if (*self.plsheader).nvlrecords ne 0 then dum = self.readVLR()
-  if (*self.plsheader).nPulses ne 0 then dum = self.readPulses(/ALL)
+  if (*self.plsheader).nPulses ne 0 then begin
+    dum = self.readPulses(/ALL)
+    dum = self.readWaves(/ALL)
+  endif
   if (*self.plsheader).navlrecords ne 0 then dum = self.readAVLR()
   
   close, /ALL
@@ -353,16 +357,27 @@ Function pulsewaves::readHeader
     self.Out->print,1, Strcompress("Z Maximum: " + String((*self.plsheader).zMax))
     
 ;    (*self.initplsheader)
-  ; Sanity check of the header
-  point_lun, -1, dum
-  self.Out->print,1, "Sanity check of the header..."
-  if dum eq (*self.plsHeader).headerSize then self.Out->print,1, "Header' sanity check passed..." else begin
-    self.Out->print,2, "Header' sanity check NOT passed..."
-    self.Out->print,2, "The rest of the data might be wrong..."
-    self.Out->print,2, "We continue anyway to read (for now)..."
-  endelse
+    ; Sanity check of the header
+    point_lun, -1, dum
+    self.Out->print,1, "Sanity check of the header..."
+    if dum eq (*self.plsHeader).headerSize then self.Out->print,1, "Header' sanity check passed..." else begin
+      self.Out->print,2, "Header' sanity check NOT passed..."
+      self.Out->print,2, "The rest of the data might be wrong..."
+      self.Out->print,2, "We continue anyway to read (for now)..."
+    endelse
 
   Close, 1
+  
+  self.Out->print,1, "Reading Header of the associated Waves file..."
+  ; Open the file
+  Openr, 1, self.wvsFilePath, /swap_if_big_endian
+  self.wvsHeader = ptr_new(self.initwvsheader())
+  Readu, 1, (*self.wvsHeader)
+  if String(signature) eq 'PulseWavesPulse' then self.Out->print, 1, "Header's signature is valid..." else begin
+    self.Out->print, 2, "Header' signature is invalid !"
+  endelse
+  
+  self.Out->print,1, "Header read and stored..."
 
   Return, 1
   
@@ -408,7 +423,7 @@ Function pulsewaves::readVLR
   
     ; Init VLR Header structure
     vlrStruct = self.initplsvlr()
-    
+    close, 1
     openr, 1, self.plsFilePath, /swap_if_big_endian
     point_lun, 1, (*self.plsheader).headerSize
     
@@ -419,7 +434,7 @@ Function pulsewaves::readVLR
     
  
       readu, 1, vlrStruct
-      print, vlrStruct
+      print, vlrStruct.recordID
       
       ; Creating a temp file that hold the nth VLR record - one file per record
       vlrArr[w] = ptr_new(vlrStruct)
@@ -474,6 +489,104 @@ Function pulsewaves::readVLR
             tempStruc = 0
           
         end
+        
+        ; PulseWaves_Spec - FIRST AVLR after pulses block
+        (vlrStruct.recordID eq 4294967295): begin
+            self.out->print,1,'First Appended Variable Length Record found'
+          end
+        
+        ; PulseWaves_Spec - SCANNER  
+        (vlrStruct.recordID ge 100001 and vlrStruct.recordID lt 100255): begin
+            
+            self.out->print,1,'Scanner descriptor found'
+            
+            ; This key has a size of 248 bytes
+            scannerKey = {$
+              sizeK       : 0UL,$
+              reserver    : 0UL,$
+              instrument  : bytarr(64),$
+              serial      : bytarr(64),$
+              wavelength  : 0. ,$
+              outPlsWidth : 0. ,$
+              scanPattern : 0UL,$
+              nMirrorFace : 0UL,$
+              scanFreq    : 0.,$
+              scanMinAngle: 0.,$
+              scanMaxAngle: 0.,$
+              plsFreq     : 0.,$
+              beamDiam    : 0.,$
+              beamDiv     : 0.,$
+              minRange    : 0.,$
+              maxRange    : 0.,$
+              description : bytarr(64) $
+              }
+            
+            readu, 1, scannerKey 
+            vlrArr[w+1] = ptr_new(scannerKey)
+            print, scannerKey
+            
+          end
+        
+        ; PulseWaves_Spec - PULSE DESCRIPTOR
+        (vlrStruct.recordID ge 200001 and vlrStruct.recordID lt 200255): begin
+          
+            self.out->print,1,'Pulse descriptor found'
+            
+            ; This key has a size of 92 bytes
+            pulseKey = {$
+              sizeK       : 0UL,$           ;Size of the key
+              reserver    : 0UL,$           ; Reserved
+              opCentAnch  : 0L ,$           ; Optical Center to Anchor Point
+              nEBytes     : 0US,$           ; Number of Extra Wave Bytes
+              nSampling   : 0US,$           ; Number of Samplings
+              sampleUnit  : 0. ,$           ; Sampling unit
+              scanIndex   : 0UL,$           ; Scanner Index
+              compression : 0UL,$           ; Compression
+              description : bytarr(64) $
+            }
+            
+            readu, 1, pulseKey
+            ;vlrArr[w+1] = ptr_new(pulseKey)
+            
+            if pulseKey.nSampling eq 1 then begin
+              self.out->print,1,'There is one Sampling Descriptor record...'
+            endif else begin
+              self.out->print, 1, 'There are ' + strcompress(string(pulseKey.nSampling), /REMOVE_ALL) + ' Sampling Descriptor records...'
+            endelse
+            
+            ; This key has a size of 248 bytes
+            samplingKey = {$
+              sizeK                   : 0UL,$
+              reserver                : 0UL,$
+              type                    : 0B ,$
+              channel                 : 0B ,$
+              unused                  : 0B ,$
+              bitDurationFromAnchor   : 0B ,$
+              scaleDurationFromAnchor : 0. ,$
+              offsetDurationFromAnchor: 0. ,$
+              bitForNSegments         : 0B ,$
+              bitForNSamples          : 0B ,$
+              nSegments               : 0US,$
+              nSamples                : 0UL,$
+              bitPerSample            : 0US,$
+              LookupTableInde         : 0US,$
+              sampleUnits             : 0. ,$
+              compression             : 0UL,$
+              description : bytarr(64) $
+            }
+            
+            samplingRecords = replicate(samplingKey, pulseKey.nSampling)
+            readu, 1, samplingRecords
+            vlrArr[w+1] = ptr_new({compositionRecord:pulseKey, samplingRecord:samplingRecords})
+            print, samplingRecords
+            
+          end
+          
+        ; PulseWaves_Spec - TABLE  
+        (vlrStruct.recordID ge 300001 and vlrStruct.recordID lt 300255): begin
+          
+          
+          end
     
         else: begin
         
@@ -557,7 +670,7 @@ openr, getDataLun, self.plsFilePath, /get_lun, /swap_if_big_endian
 ; keyword /all set -> returning all the points of the LAS file
 if keyword_set(ALL) then begin
 
-  self.out->print,1,"Formating data..."
+  self.out->print,1,"Formating pulse data..."
   
   ; Retriving the data packet
   plsStructure = self.initPulseRecord()
@@ -569,9 +682,8 @@ if keyword_set(ALL) then begin
   
   if (size(pulseData))[2] ne 8 then $
     self.out->print,2,"Nothing return !" else $
-    self.out->print,1,strcompress("Number of point record(s) returned: " + string((*(self.plsHeader)).nPulses))
-    
-  self.out->print,1, strcompress("Time :"+string(SYSTIME(1) - T) +' Seconds')
+    self.out->print,1,strcompress('Number of pulse records returned: ' + string((*self.plsHeader).nPulses))
+  self.out->print,1, strcompress("Loading Time :"+string(SYSTIME(1) - T) +' Seconds')
   
 endif
 
@@ -580,10 +692,98 @@ free_lun, getDataLun
 self.plspulserec = ptr_new(pulseData)
 self.plspulseInd = ptr_new(index)
 
-; As for now, returning the pulse block
-Return, pulseData
+Return, 1
 
 End
+
+
+
+;+
+; This function returns the number of flightlines of a specific survey day
+;
+; :Categories:
+;   GENERAL, GET
+;
+; :Returns:
+;   An integer equals to the number of flightlines.
+;
+; :Uses:
+;   Result=Obj->getNumberOfFlightline(day=surveyDay)
+;
+; :Examples:
+;
+;     Define the bounding coordinate for the selection
+;     geoBox = [488401.968647,487901.968647,235421.265389,234921.265386]
+;
+;     Initialize the object
+;     lasObj = obj_new('laslib')
+;
+;     Load the 5th flightline from December 5th 2003 data
+;     lasObj->loadData, day='338', flightline=5, /QUIET
+;
+;     Select points that lies inside the bounding box.
+;     Result = lasObj->getData(boundingBox=geoBox)
+;
+; :Keywords:
+;   boundingBox : in, optional, type=dblarr(6)
+;     Geographical limit to filter the data. It can be Easting and/or Northing and/or Elevation values.
+;     The array need to be of one of the following format:
+;       [xMax, xMin, yMax, yMin, zMax, zMin] or,
+;       [zMax, zMin] or,
+;       [zMax] or,
+;       [zMin]
+;   pointNumber : in, optional, type=long
+;     PointNumber can be either one point index (long) and range of continuous points [pointMinIndex, pointMaxIndex],
+;     or a collection of discrete points lonarr(n).
+;   max : in, optional, type=boolean
+;     Set the boundingBox value as the maximum (cutoff) elevation value.
+;     This is a required Keyword if the boundingBox has only one value.
+;   min :
+;     Set the boundingBox value as the minimum (cutoff) elevation value.
+;     This is a required Keyword if the boundingBox has only one value.
+;   all : in, optional, type=boolean
+;     If present, will return all the points of the LAS file.
+;   _ref_extra : in, optional, type=`strarr`
+;     A `strarr[n]` that describ the n field(s) that need to be return.
+;     If n=0 then all the fields are return.
+;
+;-
+Function pulsewaves::readWaves, ALL=ALL
+
+  ; start time
+  T = SYSTIME(1)
+  
+  openr, getDataLun, self.wvsFilePath, /get_lun, /swap_if_big_endian
+  
+  ; keyword /all set -> returning all the points of the LAS file
+  if keyword_set(ALL) then begin
+  
+    self.out->print,1,"Formating waveform data..."
+    
+    ; Retriving the data packet
+    plsStructure = self.initPulseRecord()
+    pulseData = replicate(plsStructure, (*self.plsHeader).nPulses)
+    point_lun, getDataLun, 60 ; 60 bytes is the size of the WVS file header
+    readu, getDataLun, pulseData
+    
+    index = lindgen((*(self.plsHeader)).nPulses)
+    
+    if (size(pulseData))[2] ne 8 then $
+      self.out->print,2,"Nothing return !" else $
+      self.out->print,1,strcompress('Number of waveform records returned: ' + string((*self.plsHeader).nPulses))
+    self.out->print,1, strcompress("Loading Time :"+string(SYSTIME(1) - T) +' Seconds')
+    
+  endif
+  
+  free_lun, getDataLun
+  ; Updating data members
+  self.wvsWaverec = ptr_new(pulseData)
+  self.wvsWaveInd = ptr_new(index)
+  
+  Return, 1
+  
+End
+
 
 
 Function pulsewaves::readAVLR
@@ -668,6 +868,14 @@ End
 Function pulsewaves::getPulses
 
   return, (*self.plspulserec)
+  
+End
+
+
+
+Function pulsewaves::getWaves
+
+  return, (*self.wvswaverec)
   
 End
 
