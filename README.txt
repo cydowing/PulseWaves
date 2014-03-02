@@ -7,8 +7,7 @@ Carbomap has a joint expertise of more than ten years in lidar full waveform dat
 
 Carbomap takes a step forward, and fully support PulseWaves file format and integrates its support to all of its workflows.
 
-As we want PulseWaves file format to be broadly accepted by the users community, we are releasing an open source IDL library to
-read and write PulseWaves file.
+As we want PulseWaves file format to be broadly accepted by the users community, we are releasing an open source IDL library to read and write PulseWaves file.
 
 PulseWaves is a Vendor neutral full waveform data format created by Martin Isenburg (RapidLasso) that is retro-compatible with LAS file.
 The C++ source code and format specification can be found on GitHub at:
