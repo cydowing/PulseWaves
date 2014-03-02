@@ -9,6 +9,8 @@ Carbomap takes a step forward, and fully support PulseWaves file format and inte
 
 As we want PulseWaves file format to be broadly accepted by the users community, we are releasing an open source IDL library to read and write PulseWaves file.
 
+DON'T HESITATE TO TAKE PART OF THIS PROJECT.
+
 PulseWaves is a Vendor neutral full waveform data format created by Martin Isenburg (RapidLasso) that is retro-compatible with LAS file.
 The C++ source code and format specification can be found on GitHub at:
 https://github.com/PulseWaves
