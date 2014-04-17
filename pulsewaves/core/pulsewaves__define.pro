@@ -69,7 +69,7 @@ End
 ;     -01/03/2014: Creation
 ;
 ;-
-Function pulsewaves::init, inputfile = file
+Function pulsewaves::init, inputfile = file, _extra = console_options
 
   Compile_opt idl2
   
@@ -78,7 +78,7 @@ Function pulsewaves::init, inputfile = file
   ; Initialazing data members
   self.plsHeader = ptr_new(self.initplsheader())
   ;self.plspulserec = ptr_new(self.initpulserecord())
-  self.out = obj_new('consoleoutput')
+  self.out = obj_new('consoleoutput', _extra = console_options)
   
   ;Checking that the provided file exist
   exist = File_test(file)
@@ -935,7 +935,7 @@ End
 ;    Return loaded Pulses records
 ;
 ; :Category:
-; 	PuLSEWAVES, READ
+; 	PULSEWAVES, READ
 ;
 ; :Return:
 ; 	an single structure or an array of structures
