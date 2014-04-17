@@ -40,6 +40,23 @@ End
 
 
 
+Pro consoleOutput::Progress, code, n, m
+
+  flag = 0
+
+  ;INFO    :: -> code 1
+  ;WARNING :: -> code 2
+  ;ERROR   :: -> code 3
+  codeString = ["::","INFO","WARNING","ERROR"]
+  
+  case self.Consolesetup of
+    0:Print, FORMAT='(%"%s", a-7,tr1,a2,tr1, %"%d job process over %d...",$)', string(13b), codeString[code], codeString[0], n, m
+    1:
+    2:
+  endcase
+  
+End
+
 ; Function to output information on console
 Pro consoleOutput::print, code, stringText
 
