@@ -19,6 +19,8 @@
 ; :History:
 ; 	September 2013
 ; 	 -First implementation
+; 	March 2014
+; 	 - More serious developements
 ;
 ; :Author:
 ;   Antoine Cottin
@@ -67,7 +69,7 @@ End
 ;     -01/03/2014: Creation
 ;
 ;-
-Function pulsewaves::init, inputfile = file
+Function pulsewaves::init, inputfile = file, _extra = console_options
 
   Compile_opt idl2
   
@@ -76,7 +78,7 @@ Function pulsewaves::init, inputfile = file
   ; Initialazing data members
   self.plsHeader = ptr_new(self.initplsheader())
   ;self.plspulserec = ptr_new(self.initpulserecord())
-  self.out = obj_new('consoleoutput')
+  self.out = obj_new('consoleoutput', _extra = console_options)
   
   ;Checking that the provided file exist
   exist = File_test(file)
@@ -300,6 +302,11 @@ End
 Function pulsewaves::readHeader
 
 
+  ; Compiling dependant procedure and function files
+  Resolve_routine, 'consoleoutput__define', /COMPILE_FULL_FILE
+  out = Obj_new('consoleoutput')
+  
+
   ; Open the file
   Openr, 1, self.plsFilePath, /swap_if_big_endian
 
@@ -327,7 +334,7 @@ Function pulsewaves::readHeader
     
     self.out->print,1, "Reading file header..."
     self.out->print,1, Strcompress("System identifier: " + String((*self.plsheader).systemID))
-    self.out->print,1, Strcompress("Generating goftware: " + String((*self.plsheader).softwareID))
+    self.out->print,1, Strcompress("Generating software: " + String((*self.plsheader).softwareID))
     self.out->print,1, Strcompress("Day of creation: " + String(Fix((*self.plsheader).day)))
     self.out->print,1, Strcompress("Year of creation: " + String(Fix((*self.plsheader).year)))
     self.out->print,1, Strcompress("Header size: " + String(Fix((*self.plsheader).headerSize)))   
@@ -412,8 +419,10 @@ End
 ;   This is not a public method
 ;
 ; :History:
-;   Create by Antoine Cottin, January 2012.
-;   February 2014 : remodeling of the whole procedure for better results
+;   September 2013
+;    -First implementation
+;   February 2014
+;    -Remodeling of the whole procedure for better results
 ;
 ; :Author:
 ;   Antoine Cottin
@@ -421,6 +430,7 @@ End
 Function pulsewaves::readVLR
 
   
+     self.out->print,1, "Reading Variable Length Records..."
     ; Init VLR Header structure
     vlrStruct = self.initplsvlr()
     close, 1
@@ -434,7 +444,7 @@ Function pulsewaves::readVLR
     
  
       readu, 1, vlrStruct
-      print, vlrStruct.recordID
+;      print, vlrStruct.recordID
       
       ; Creating a temp file that hold the nth VLR record - one file per record
       vlrArr[w] = ptr_new(vlrStruct)
@@ -523,7 +533,25 @@ Function pulsewaves::readVLR
             
             readu, 1, scannerKey 
             vlrArr[w+1] = ptr_new(scannerKey)
-            print, scannerKey
+            
+            
+            ; Printing the information
+            self.out->print,1, Strcompress("System identifier: " + String(scannerKey.instrument))
+            self.out->print,1, Strcompress("System serial: " + String(scannerKey.serial))
+            self.out->print,1, Strcompress("System wavelength: " + String(scannerKey.wavelength) + " nm")
+            self.out->print,1, Strcompress("System outgoing pulse width: " + String(scannerKey.outPlsWidth) + " nm")
+            self.out->print,1, Strcompress("System scan pattern: " + String(scannerKey.scanPattern))
+            self.out->print,1, Strcompress("System number of mirror facets: " + String(scannerKey.nMirrorFace))
+            self.out->print,1, Strcompress("System scan frequency: " + String(scannerKey.scanFreq) + " hz")
+            self.out->print,1, Strcompress("System minimum scan angle: " + String(scannerKey.scanMinAngle) + " deg")
+            self.out->print,1, Strcompress("System maximum scan angle: " + String(scannerKey.scanMaxAngle) + " deg")
+            self.out->print,1, Strcompress("System pulse frequency: " + String(scannerKey.plsFreq) + " khz")
+            self.out->print,1, Strcompress("System beam diameter at exit aperture: " + String(scannerKey.beamDiam) + " mm")
+            self.out->print,1, Strcompress("System beam divergence: " + String(scannerKey.beamDiv) + " mrad")
+            self.out->print,1, Strcompress("System minimum range: " + String(scannerKey.minRange) + " mrad")
+            self.out->print,1, Strcompress("System maximum range: " + String(scannerKey.maxRange) + " mrad")
+            self.out->print,1, Strcompress("System description (id any): " + String(scannerKey.description))
+  
             
           end
         
@@ -547,6 +575,18 @@ Function pulsewaves::readVLR
             
             readu, 1, pulseKey
             ;vlrArr[w+1] = ptr_new(pulseKey)
+            self.out->print,1,'Reading composition record...'
+            
+            ; Printing the information
+            self.Out->print,1, Strcompress("Pulse optical center to anchor: " + String(pulseKey.opCentAnch) + ' (sampling unit)')
+            self.Out->print,1, Strcompress("Pulse number of extra bytes: " + String(fix(pulseKey.nEBytes)) + ' bytes')
+            self.Out->print,1, Strcompress("Pulse number of sampling: " + String(fix(pulseKey.nSampling)))
+            self.Out->print,1, Strcompress("Pulse samples unit: " + String(pulseKey.sampleUnit) + " ns")
+            self.Out->print,1, Strcompress("Pulse scanner index : " + String(fix(pulseKey.scanIndex)))
+            self.Out->print,1, Strcompress("Pulse compression: " + String(fix(pulseKey.compression)))
+            self.Out->print,1, Strcompress("Pulse description: " + String(pulseKey.description))
+            
+            
             
             if pulseKey.nSampling eq 1 then begin
               self.out->print,1,'There is one Sampling Descriptor record...'
@@ -578,7 +618,32 @@ Function pulsewaves::readVLR
             samplingRecords = replicate(samplingKey, pulseKey.nSampling)
             readu, 1, samplingRecords
             vlrArr[w+1] = ptr_new({compositionRecord:pulseKey, samplingRecord:samplingRecords})
-            print, samplingRecords
+;            print, samplingRecords
+            
+            for k = 0, pulseKey.nSampling-1 do begin
+              
+              self.out->print,1,'========================================================='
+              self.out->print,1,'Reading sampling record number ' + strcompress(string(k))
+              
+              ; Printing the information
+              self.Out->print,1, Strcompress("Sampling type: " + String(samplingRecords[k].type))
+              self.Out->print,1, Strcompress("Sampling channel: " + String(samplingRecords[k].channel))
+              self.Out->print,1, Strcompress("Sampling bits for duration from anchor: " + String(samplingRecords[k].bitDurationFromAnchor))
+              self.Out->print,1, Strcompress("Sampling scale for duration from anchor: : " + String(samplingRecords[k].scaleDurationFromAnchor))
+              self.Out->print,1, Strcompress("Sampling offset for duration from anchor: : " + String(samplingRecords[k].offsetDurationFromAnchor))
+              self.Out->print,1, Strcompress("Sampling bits for number of segments: " + String(samplingRecords[k].bitForNSegments))
+              self.Out->print,1, Strcompress("Sampling bits for number of samples : " + String(samplingRecords[k].bitForNSamples))
+              self.Out->print,1, Strcompress("Sampling number of segments : " + String(samplingRecords[k].nSegments))
+              self.Out->print,1, Strcompress("Sampling number of samples : " + String(samplingRecords[k].nSamples))
+              self.Out->print,1, Strcompress("Sampling bits per sample : " + String(samplingRecords[k].bitPerSample))
+              self.Out->print,1, Strcompress("Sampling lookup table : " + String(samplingRecords[k].LookupTableInde))
+              self.Out->print,1, Strcompress("Sampling sample unit : " + String(samplingRecords[k].sampleUnits) + ' ns')
+              self.Out->print,1, Strcompress("Sampling compression : " + String(samplingRecords[k].compression))
+              self.Out->print,1, Strcompress("Sampling description : " + String(samplingRecords[k].description))
+              
+              if k eq pulseKey.nSampling-1 then self.out->print,1,'========================================================='
+              
+            endfor
             
           end
           
@@ -865,24 +930,206 @@ End
 
 
 
-Function pulsewaves::getPulses
+;+
+; :Description:
+;    Return loaded Pulses records
+;
+; :Category:
+; 	PULSEWAVES, READ
+;
+; :Return:
+; 	an single structure or an array of structures
+;
+;	:Uses:
+;		Result = plsobj.getPulses(index_number)
+;
+;	:Example:
+;		a = obj_new('pulsewaves', inputFile = '/Path/To/File')
+;		To return the 50th record
+;		dum0 = a.getPulses(50)
+;		To return the 100th to the 199th records
+;		dum1 = a.getPulses(indgen(100)+100)
+;
+; :Params:
+;    index : in, optional, type = 0L
+;     index number of the pulse to return.
+;     if a single value -> returns a structure 
+;     if an array of value -> returns an array of structure
+;     if not present -> returns an array of structure of structure that contains all the records
+;
+; :History:
+;   March 2014
+;    -First implementation
+;   April 2014
+;    - Adding index support
+;    
+; :Author: antoine
+;-
+Function pulsewaves::getPulses, index
 
-  return, (*self.plspulserec)
+  if N_elements(index) ne 0 then begin
+
+    if max(index) ge (*self.plsHeader).npulses then begin
+      self.Out->print, 2, "Index out of range..."
+      Return, 0
+    endif else begin
+      Return, (*self.plspulserec)[index]
+    endelse
+
+  endif else Return, *self.plspulserec
   
 End
 
 
 
-Function pulsewaves::getWaves
+;+
+; :Description:
+;    Return loaded Waves records
+;
+; :Category:
+;   PULSEWAVES, READ
+;
+; :Return:
+;   an single structure or an array of structures
+;
+; :Uses:
+;   Result = plsobj.getWaves(index_number)
+;
+; :Example:
+;   a = obj_new('pulsewaves', inputFile = '/Path/To/File')
+;   To return the 50th record
+;   dum0 = a.getWaves(50)
+;   To return the 100th to the 199th records
+;   dum1 = a.getWaves(indgen(100)+100)
+;
+; :Params:
+;    index : in, optional, type = 0L
+;     index number of the pulse to return.
+;     if a single value -> returns a structure 
+;     if an array of value -> returns an array of structure
+;     if not present -> returns an array of structure of structure that contains all the records
+;
+; :History:
+;   March 2014
+;    -First implementation
+;   April 2014
+;    - Adding index support
+;    
+; :Author: antoine
+;-
+Function pulsewaves::getWaves, index
 
-  return, (*self.wvswaverec)
+  if N_elements(index) ne 0 then begin
+
+    if Max(index) ge (*self.Plsheader).Npulses then begin
+      self.Out->print, 2, "Index out of range..."
+      Return, 0
+    endif else begin
+      Return, (*self.wvswaverec)[index]
+    endelse
+
+  endif else Return, *self.wvswaverec
   
 End
 
 
 
-Function pulsewaves::getVlRecords
+;+
+; :Description:
+;    Return loaded VLR records
+;
+; :Category:
+;   PULSEWAVES, READ
+;
+; :Return:
+;   an single structure or an array of structures
+;
+; :Uses:
+;   Result = plsobj.getVlRecords(index_number)
+;
+; :Example:
+;   a = obj_new('pulsewaves', inputFile = '/Path/To/File')
+;   To return the 2th record
+;   dum0 = a.getVlRecords(2)
+;   To get all VLR records
+;   dum1 = a.getVlRecords()
+;
+; :Params:
+;    index : in, optional, type = 0L
+;     index number of the pulse to return.
+;     if a single value -> returns a structure
+;     if an array of value -> returns an array of structure
+;     if not present -> returns an array of structure of structure that contains all the records
+;
+; :History:
+;   March 2014
+;    -First implementation
+;   April 2014
+;    - Adding index support
+;
+; :Author: antoine
+;-
+Function pulsewaves::getVlRecords, index
 
-  return, (*self.plsvlrarray)
+  if N_elements(index) ne 0 then begin
+
+    if Max(index) ge (*self.plsHeader).nvlrecords then begin
+      self.Out->print, 2, "Index out of range..."
+      Return, 0
+    endif else begin
+      Return, (*self.plsvlrarray)[index]
+    endelse
+
+  endif else Return, *self.plsvlrarray
   
+End
+
+
+
+;+
+; :Description:
+;    Return loaded AVLR records
+;
+; :Category:
+;   PULSEWAVES, READ
+;
+; :Return:
+;   an single structure or an array of structures
+;
+; :Uses:
+;   Result = plsobj.getAVlRecords(index_number)
+;
+; :Example:
+;   a = obj_new('pulsewaves', inputFile = '/Path/To/File')
+;   To return the 2th record
+;   dum0 = a.getAVlRecords(2)
+;   To get all VLR records
+;   dum1 = a.getAVlRecords()
+;
+; :Params:
+;    index : in, optional, type = 0L
+;     index number of the pulse to return.
+;     if a single value -> returns a structure
+;     if an array of value -> returns an array of structure
+;     if not present -> returns an array of structure of structure that contains all the records
+;
+; :History:
+;   April 2014
+;    -First implementation
+;
+; :Author: antoine
+;-
+Function pulsewaves::getAVlRecords, index
+
+  if N_elements(index) ne 0 then begin
+
+    if Max(index) ge (*self.plsHeader).navlrecords then begin
+      self.Out->print, 2, "Index out of range..."
+      Return, 0
+    endif else begin
+      Return, (*self.Plsavlrarray)[index]
+    endelse
+
+  endif else Return, *self.Plsavlrarray
+
 End
