@@ -1,6 +1,6 @@
 close, /all
-a = obj_new('pulsewaves', inputFile = '/Users/moi/git/pulsewaves/pulsewaves/data/optech_example1.pls')
-dum = a.readPulses(/ALL)
+a = obj_new('pulsewaves', inputFile = '/Users/moi/git/pulsewaves/pulsewaves/data/riegl_example1.pls')
+;dum = a.readPulses(/ALL)
 
 ALL = ALL,$
 HEADERSIZE = HEADERSIZE,$
