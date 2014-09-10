@@ -38,7 +38,8 @@ void = { pulsewaves, $
   wvsHeader     : ptr_new(),$         ; Pointer to the header of the WVS file
   wvsWaveRec    : ptr_new(),$         ; Pointer to the records of the WVS file corresponding to the records in plsPulseRec
   wvsWaveInd    : ptr_new(),$         ; Pointer to the index corresponding to the records in plsPulseRec
-  out           : obj_new() $         ; Object that allow nice print out
+;  out           : obj_new() $         ; Object that allow nice print out
+  inherits consoleoutput $
 }
 
 End
@@ -78,7 +79,7 @@ Function pulsewaves::init, inputfile = file, _extra = console_options
   ; Initialazing data members
   self.plsHeader = ptr_new(self.initplsheader())
   ;self.plspulserec = ptr_new(self.initpulserecord())
-  self.out = obj_new('consoleoutput', _extra = console_options)
+;  self.out = obj_new('consoleoutput', _extra = console_options)
   
   ;Checking that the provided file exist
   exist = File_test(file)
@@ -87,8 +88,8 @@ Function pulsewaves::init, inputfile = file, _extra = console_options
     self.wvsFilePath = self.getWaveFileName(self.plsFilePath)
   endif else begin
     while exist ne 1 do begin
-      self.out->print, 3, "File doesn't seems to exist..."
-      self.out->print, 3, "Please re-enter a file path string"
+      self.print, 3, "File doesn't seems to exist..."
+      self.print, 3, "Please re-enter a file path string"
       newPath = ""
       read, newPath
       print, newPath
@@ -157,8 +158,8 @@ End
 Function pulsewaves::cleanup
 
   ; Removing the temporary files
-  self.out->print,1 , 'Destroying PulseWaves object...'
-  self.out->print,1 , 'Cleaning memory...'
+  self.print,1 , 'Destroying PulseWaves object...'
+  self.print,1 , 'Cleaning memory...'
   plsFilePath = 0
   ptr_free, $
     self.plsHeader,$
@@ -170,8 +171,8 @@ Function pulsewaves::cleanup
     self.plsavlrarray
 
   ; Destroying the consoleOutput object
-  self.out->print,1 , 'Destroying remaining objects...'
-  self.out->print,1 , 'Bye :)'
+  self.print,1 , 'Destroying remaining objects...'
+  self.print,1 , 'Bye :)'
   obj_destroy, self.out
   
 End
@@ -303,8 +304,8 @@ Function pulsewaves::readHeader
 
 
   ; Compiling dependant procedure and function files
-  Resolve_routine, 'consoleoutput__define', /COMPILE_FULL_FILE
-  out = Obj_new('consoleoutput')
+;  Resolve_routine, 'consoleoutput__define', /COMPILE_FULL_FILE
+;  out = Obj_new('consoleoutput')
   
 
   ; Open the file
@@ -316,15 +317,15 @@ Function pulsewaves::readHeader
 
   if String(signature) eq 'PulseWavesPulse' then begin
 
-    self.out->print,1, 'PulseWaves file detected..."
-    self.out->print,1, "Looking for version number..."
+    self.print,1, 'PulseWaves file detected..."
+    self.print,1, "Looking for version number..."
     Point_lun,1, 173
     majorVersion = 1B
     minorVersion = 1B
     Readu, 1, majorVersion
     Readu, 1, minorVersion
-    self.out->print,1,Strcompress("PulseWaves Version " + String(Fix(majorVersion)) + "." + Strcompress(String(Fix(minorVersion)),/remove_all) + " detected.")
-    self.out->print,1, "Initializing the header..."
+    self.print,1,Strcompress("PulseWaves Version " + String(Fix(majorVersion)) + "." + Strcompress(String(Fix(minorVersion)),/remove_all) + " detected.")
+    self.print,1, "Initializing the header..."
 
     ; Closing and re-opening the file to reinitialize the pointer
     Close,1
@@ -332,59 +333,59 @@ Function pulsewaves::readHeader
     ; Putting file data into data member
     Readu, 1, (*self.plsheader)
     
-    self.out->print,1, "Reading file header..."
-    self.out->print,1, Strcompress("System identifier: " + String((*self.plsheader).systemID))
-    self.out->print,1, Strcompress("Generating software: " + String((*self.plsheader).softwareID))
-    self.out->print,1, Strcompress("Day of creation: " + String(Fix((*self.plsheader).day)))
-    self.out->print,1, Strcompress("Year of creation: " + String(Fix((*self.plsheader).year)))
-    self.out->print,1, Strcompress("Header size: " + String(Fix((*self.plsheader).headerSize)))   
-    self.out->print,1, Strcompress("Byte offset to pulses block: " + String((*self.plsheader).offsetPulse))
-    self.out->print,1, Strcompress("File contains " + String((*self.plsheader).nPulses) + " pulses.")
-    self.out->print,1, Strcompress("Pulse format: " + String(Fix((*self.plsheader).pulseFormat)))
-    self.out->print,1, Strcompress("Pulse attributes: " + String((*self.plsheader).pulseAttrib))
-    self.out->print,1, Strcompress("Pulse size: " + String((*self.plsheader).pulseSize) + " bytes.")
-    self.out->print,1, Strcompress("Pulse compression: " + String(Fix((*self.plsheader).pulseCompress)))
-    self.out->print,1, Strcompress("Number of Variable Length Records: " + String(Fix((*self.plsheader).nvlrecords)))
-    self.out->print,1, Strcompress("Number of Append Variable Length Records: " + String(Fix((*self.plsheader).navlrecords)))
-    self.out->print,1, Strcompress("T(ime) scale factor: " + String((*self.plsheader).tScale))
-    self.out->print,1, Strcompress("T(ime) offset: " + String((*self.plsheader).tOffset))
-    self.out->print,1, Strcompress("Minimum T(ime): " + String((*self.plsheader).tMin)) 
-    self.out->print,1, Strcompress("Maximum T(ime): " + String((*self.plsheader).tMax)) 
-    self.out->print,1, Strcompress("X scale factor: " + String((*self.plsheader).xScale)) 
-    self.out->print,1, Strcompress("Y scale factor: " + String((*self.plsheader).yScale))
-    self.out->print,1, Strcompress("Z scale factor: " + String((*self.plsheader).zScale))
-    self.Out->print,1, Strcompress("X offset factor: " + String((*self.plsheader).xOffset))
-    self.Out->print,1, Strcompress("Y offset factor: " + String((*self.plsheader).yOffset))
-    self.Out->print,1, Strcompress("Z offset factor: " + String((*self.plsheader).zOffset))   
-    self.out->print,1, Strcompress("X Minimum: " + String((*self.plsheader).xMin))
-    self.out->print,1, Strcompress("X Maximum: " + String((*self.plsheader).xMax))
-    self.Out->print,1, Strcompress("Y Minimum: " + String((*self.plsheader).yMin))
-    self.Out->print,1, Strcompress("Y Maximum: " + String((*self.plsheader).yMax))
-    self.Out->print,1, Strcompress("Z Minimum: " + String((*self.plsheader).zMin))
-    self.Out->print,1, Strcompress("Z Maximum: " + String((*self.plsheader).zMax))
+    self.print,1, "Reading file header..."
+    self.print,1, Strcompress("System identifier: " + String((*self.plsheader).systemID))
+    self.print,1, Strcompress("Generating software: " + String((*self.plsheader).softwareID))
+    self.print,1, Strcompress("Day of creation: " + String(Fix((*self.plsheader).day)))
+    self.print,1, Strcompress("Year of creation: " + String(Fix((*self.plsheader).year)))
+    self.print,1, Strcompress("Header size: " + String(Fix((*self.plsheader).headerSize)))   
+    self.print,1, Strcompress("Byte offset to pulses block: " + String((*self.plsheader).offsetPulse))
+    self.print,1, Strcompress("File contains " + String((*self.plsheader).nPulses) + " pulses.")
+    self.print,1, Strcompress("Pulse format: " + String(Fix((*self.plsheader).pulseFormat)))
+    self.print,1, Strcompress("Pulse attributes: " + String((*self.plsheader).pulseAttrib))
+    self.print,1, Strcompress("Pulse size: " + String((*self.plsheader).pulseSize) + " bytes.")
+    self.print,1, Strcompress("Pulse compression: " + String(Fix((*self.plsheader).pulseCompress)))
+    self.print,1, Strcompress("Number of Variable Length Records: " + String(Fix((*self.plsheader).nvlrecords)))
+    self.print,1, Strcompress("Number of Append Variable Length Records: " + String(Fix((*self.plsheader).navlrecords)))
+    self.print,1, Strcompress("T(ime) scale factor: " + String((*self.plsheader).tScale))
+    self.print,1, Strcompress("T(ime) offset: " + String((*self.plsheader).tOffset))
+    self.print,1, Strcompress("Minimum T(ime): " + String((*self.plsheader).tMin)) 
+    self.print,1, Strcompress("Maximum T(ime): " + String((*self.plsheader).tMax)) 
+    self.print,1, Strcompress("X scale factor: " + String((*self.plsheader).xScale)) 
+    self.print,1, Strcompress("Y scale factor: " + String((*self.plsheader).yScale))
+    self.print,1, Strcompress("Z scale factor: " + String((*self.plsheader).zScale))
+    self.print,1, Strcompress("X offset factor: " + String((*self.plsheader).xOffset))
+    self.print,1, Strcompress("Y offset factor: " + String((*self.plsheader).yOffset))
+    self.print,1, Strcompress("Z offset factor: " + String((*self.plsheader).zOffset))   
+    self.print,1, Strcompress("X Minimum: " + String((*self.plsheader).xMin))
+    self.print,1, Strcompress("X Maximum: " + String((*self.plsheader).xMax))
+    self.print,1, Strcompress("Y Minimum: " + String((*self.plsheader).yMin))
+    self.print,1, Strcompress("Y Maximum: " + String((*self.plsheader).yMax))
+    self.print,1, Strcompress("Z Minimum: " + String((*self.plsheader).zMin))
+    self.print,1, Strcompress("Z Maximum: " + String((*self.plsheader).zMax))
     
 ;    (*self.initplsheader)
     ; Sanity check of the header
     point_lun, -1, dum
-    self.Out->print,1, "Sanity check of the header..."
-    if dum eq (*self.plsHeader).headerSize then self.Out->print,1, "Header' sanity check passed..." else begin
-      self.Out->print,2, "Header' sanity check NOT passed..."
-      self.Out->print,2, "The rest of the data might be wrong..."
-      self.Out->print,2, "We continue anyway to read (for now)..."
+    self.print,1, "Sanity check of the header..."
+    if dum eq (*self.plsHeader).headerSize then self.print,1, "Header' sanity check passed..." else begin
+      self.print,2, "Header' sanity check NOT passed..."
+      self.print,2, "The rest of the data might be wrong..."
+      self.print,2, "We continue anyway to read (for now)..."
     endelse
 
   Close, 1
   
-  self.Out->print,1, "Reading Header of the associated Waves file..."
+  self.print,1, "Reading Header of the associated Waves file..."
   ; Open the file
   Openr, 1, self.wvsFilePath, /swap_if_big_endian
   self.wvsHeader = ptr_new(self.initwvsheader())
   Readu, 1, (*self.wvsHeader)
-  if String(signature) eq 'PulseWavesPulse' then self.Out->print, 1, "Header's signature is valid..." else begin
-    self.Out->print, 2, "Header' signature is invalid !"
+  if String(signature) eq 'PulseWavesPulse' then self.print, 1, "Header's signature is valid..." else begin
+    self.print, 2, "Header' signature is invalid !"
   endelse
   
-  self.Out->print,1, "Header read and stored..."
+  self.print,1, "Header read and stored..."
 
   Return, 1
   
@@ -430,7 +431,7 @@ End
 Function pulsewaves::readVLR
 
   
-     self.out->print,1, "Reading Variable Length Records..."
+     self.print,1, "Reading Variable Length Records..."
     ; Init VLR Header structure
     vlrStruct = self.initplsvlr()
     close, 1
@@ -453,7 +454,7 @@ Function pulsewaves::readVLR
       
         (vlrStruct.recordID ge 100) and (vlrStruct.recordID lt 356): begin
             
-            self.out->print,1, "Waveform packet descriptor found"
+            self.print,1, "Waveform packet descriptor found"
             
             wfDescriptor = {$
               bitsPerSample:0B,$
@@ -471,7 +472,7 @@ Function pulsewaves::readVLR
         
         (vlrStruct.recordID eq 34735): begin
           
-            self.out->print,1,'"GeoKeyDirectoryTag Record" found'
+            self.print,1,'"GeoKeyDirectoryTag Record" found'
             
             vlrGeoKeyHeader = vlrStruct
             
@@ -502,13 +503,13 @@ Function pulsewaves::readVLR
         
         ; PulseWaves_Spec - FIRST AVLR after pulses block
         (vlrStruct.recordID eq 4294967295): begin
-            self.out->print,1,'First Appended Variable Length Record found'
+            self.print,1,'First Appended Variable Length Record found'
           end
         
         ; PulseWaves_Spec - SCANNER  
         (vlrStruct.recordID ge 100001 and vlrStruct.recordID lt 100255): begin
             
-            self.out->print,1,'Scanner descriptor found'
+            self.print,1,'Scanner descriptor found'
             
             ; This key has a size of 248 bytes
             scannerKey = {$
@@ -536,21 +537,21 @@ Function pulsewaves::readVLR
             
             
             ; Printing the information
-            self.out->print,1, Strcompress("System identifier: " + String(scannerKey.instrument))
-            self.out->print,1, Strcompress("System serial: " + String(scannerKey.serial))
-            self.out->print,1, Strcompress("System wavelength: " + String(scannerKey.wavelength) + " nm")
-            self.out->print,1, Strcompress("System outgoing pulse width: " + String(scannerKey.outPlsWidth) + " nm")
-            self.out->print,1, Strcompress("System scan pattern: " + String(scannerKey.scanPattern))
-            self.out->print,1, Strcompress("System number of mirror facets: " + String(scannerKey.nMirrorFace))
-            self.out->print,1, Strcompress("System scan frequency: " + String(scannerKey.scanFreq) + " hz")
-            self.out->print,1, Strcompress("System minimum scan angle: " + String(scannerKey.scanMinAngle) + " deg")
-            self.out->print,1, Strcompress("System maximum scan angle: " + String(scannerKey.scanMaxAngle) + " deg")
-            self.out->print,1, Strcompress("System pulse frequency: " + String(scannerKey.plsFreq) + " khz")
-            self.out->print,1, Strcompress("System beam diameter at exit aperture: " + String(scannerKey.beamDiam) + " mm")
-            self.out->print,1, Strcompress("System beam divergence: " + String(scannerKey.beamDiv) + " mrad")
-            self.out->print,1, Strcompress("System minimum range: " + String(scannerKey.minRange) + " mrad")
-            self.out->print,1, Strcompress("System maximum range: " + String(scannerKey.maxRange) + " mrad")
-            self.out->print,1, Strcompress("System description (id any): " + String(scannerKey.description))
+            self.print,1, Strcompress("System identifier: " + String(scannerKey.instrument))
+            self.print,1, Strcompress("System serial: " + String(scannerKey.serial))
+            self.print,1, Strcompress("System wavelength: " + String(scannerKey.wavelength) + " nm")
+            self.print,1, Strcompress("System outgoing pulse width: " + String(scannerKey.outPlsWidth) + " nm")
+            self.print,1, Strcompress("System scan pattern: " + String(scannerKey.scanPattern))
+            self.print,1, Strcompress("System number of mirror facets: " + String(scannerKey.nMirrorFace))
+            self.print,1, Strcompress("System scan frequency: " + String(scannerKey.scanFreq) + " hz")
+            self.print,1, Strcompress("System minimum scan angle: " + String(scannerKey.scanMinAngle) + " deg")
+            self.print,1, Strcompress("System maximum scan angle: " + String(scannerKey.scanMaxAngle) + " deg")
+            self.print,1, Strcompress("System pulse frequency: " + String(scannerKey.plsFreq) + " khz")
+            self.print,1, Strcompress("System beam diameter at exit aperture: " + String(scannerKey.beamDiam) + " mm")
+            self.print,1, Strcompress("System beam divergence: " + String(scannerKey.beamDiv) + " mrad")
+            self.print,1, Strcompress("System minimum range: " + String(scannerKey.minRange) + " mrad")
+            self.print,1, Strcompress("System maximum range: " + String(scannerKey.maxRange) + " mrad")
+            self.print,1, Strcompress("System description (id any): " + String(scannerKey.description))
   
             
           end
@@ -558,7 +559,7 @@ Function pulsewaves::readVLR
         ; PulseWaves_Spec - PULSE DESCRIPTOR
         (vlrStruct.recordID ge 200001 and vlrStruct.recordID lt 200255): begin
           
-            self.out->print,1,'Pulse descriptor found'
+            self.print,1,'Pulse descriptor found'
             
             ; This key has a size of 92 bytes
             pulseKey = {$
@@ -575,23 +576,23 @@ Function pulsewaves::readVLR
             
             readu, 1, pulseKey
             ;vlrArr[w+1] = ptr_new(pulseKey)
-            self.out->print,1,'Reading composition record...'
+            self.print,1,'Reading composition record...'
             
             ; Printing the information
-            self.Out->print,1, Strcompress("Pulse optical center to anchor: " + String(pulseKey.opCentAnch) + ' (sampling unit)')
-            self.Out->print,1, Strcompress("Pulse number of extra bytes: " + String(fix(pulseKey.nEBytes)) + ' bytes')
-            self.Out->print,1, Strcompress("Pulse number of sampling: " + String(fix(pulseKey.nSampling)))
-            self.Out->print,1, Strcompress("Pulse samples unit: " + String(pulseKey.sampleUnit) + " ns")
-            self.Out->print,1, Strcompress("Pulse scanner index : " + String(fix(pulseKey.scanIndex)))
-            self.Out->print,1, Strcompress("Pulse compression: " + String(fix(pulseKey.compression)))
-            self.Out->print,1, Strcompress("Pulse description: " + String(pulseKey.description))
+            self.print,1, Strcompress("Pulse optical center to anchor: " + String(pulseKey.opCentAnch) + ' (sampling unit)')
+            self.print,1, Strcompress("Pulse number of extra bytes: " + String(fix(pulseKey.nEBytes)) + ' bytes')
+            self.print,1, Strcompress("Pulse number of sampling: " + String(fix(pulseKey.nSampling)))
+            self.print,1, Strcompress("Pulse samples unit: " + String(pulseKey.sampleUnit) + " ns")
+            self.print,1, Strcompress("Pulse scanner index : " + String(fix(pulseKey.scanIndex)))
+            self.print,1, Strcompress("Pulse compression: " + String(fix(pulseKey.compression)))
+            self.print,1, Strcompress("Pulse description: " + String(pulseKey.description))
             
             
             
             if pulseKey.nSampling eq 1 then begin
-              self.out->print,1,'There is one Sampling Descriptor record...'
+              self.print,1,'There is one Sampling Descriptor record...'
             endif else begin
-              self.out->print, 1, 'There are ' + strcompress(string(pulseKey.nSampling), /REMOVE_ALL) + ' Sampling Descriptor records...'
+              self.print, 1, 'There are ' + strcompress(string(pulseKey.nSampling), /REMOVE_ALL) + ' Sampling Descriptor records...'
             endelse
             
             ; This key has a size of 248 bytes
@@ -622,26 +623,26 @@ Function pulsewaves::readVLR
             
             for k = 0, pulseKey.nSampling-1 do begin
               
-              self.out->print,1,'========================================================='
-              self.out->print,1,'Reading sampling record number ' + strcompress(string(k))
+              self.print,1,'========================================================='
+              self.print,1,'Reading sampling record number ' + strcompress(string(k))
               
               ; Printing the information
-              self.Out->print,1, Strcompress("Sampling type: " + String(samplingRecords[k].type))
-              self.Out->print,1, Strcompress("Sampling channel: " + String(samplingRecords[k].channel))
-              self.Out->print,1, Strcompress("Sampling bits for duration from anchor: " + String(samplingRecords[k].bitDurationFromAnchor))
-              self.Out->print,1, Strcompress("Sampling scale for duration from anchor: : " + String(samplingRecords[k].scaleDurationFromAnchor))
-              self.Out->print,1, Strcompress("Sampling offset for duration from anchor: : " + String(samplingRecords[k].offsetDurationFromAnchor))
-              self.Out->print,1, Strcompress("Sampling bits for number of segments: " + String(samplingRecords[k].bitForNSegments))
-              self.Out->print,1, Strcompress("Sampling bits for number of samples : " + String(samplingRecords[k].bitForNSamples))
-              self.Out->print,1, Strcompress("Sampling number of segments : " + String(samplingRecords[k].nSegments))
-              self.Out->print,1, Strcompress("Sampling number of samples : " + String(samplingRecords[k].nSamples))
-              self.Out->print,1, Strcompress("Sampling bits per sample : " + String(samplingRecords[k].bitPerSample))
-              self.Out->print,1, Strcompress("Sampling lookup table : " + String(samplingRecords[k].LookupTableInde))
-              self.Out->print,1, Strcompress("Sampling sample unit : " + String(samplingRecords[k].sampleUnits) + ' ns')
-              self.Out->print,1, Strcompress("Sampling compression : " + String(samplingRecords[k].compression))
-              self.Out->print,1, Strcompress("Sampling description : " + String(samplingRecords[k].description))
+              self.print,1, Strcompress("Sampling type: " + String(samplingRecords[k].type))
+              self.print,1, Strcompress("Sampling channel: " + String(samplingRecords[k].channel))
+              self.print,1, Strcompress("Sampling bits for duration from anchor: " + String(samplingRecords[k].bitDurationFromAnchor))
+              self.print,1, Strcompress("Sampling scale for duration from anchor: : " + String(samplingRecords[k].scaleDurationFromAnchor))
+              self.print,1, Strcompress("Sampling offset for duration from anchor: : " + String(samplingRecords[k].offsetDurationFromAnchor))
+              self.print,1, Strcompress("Sampling bits for number of segments: " + String(samplingRecords[k].bitForNSegments))
+              self.print,1, Strcompress("Sampling bits for number of samples : " + String(samplingRecords[k].bitForNSamples))
+              self.print,1, Strcompress("Sampling number of segments : " + String(samplingRecords[k].nSegments))
+              self.print,1, Strcompress("Sampling number of samples : " + String(samplingRecords[k].nSamples))
+              self.print,1, Strcompress("Sampling bits per sample : " + String(samplingRecords[k].bitPerSample))
+              self.print,1, Strcompress("Sampling lookup table : " + String(samplingRecords[k].LookupTableInde))
+              self.print,1, Strcompress("Sampling sample unit : " + String(samplingRecords[k].sampleUnits) + ' ns')
+              self.print,1, Strcompress("Sampling compression : " + String(samplingRecords[k].compression))
+              self.print,1, Strcompress("Sampling description : " + String(samplingRecords[k].description))
               
-              if k eq pulseKey.nSampling-1 then self.out->print,1,'========================================================='
+              if k eq pulseKey.nSampling-1 then self.print,1,'========================================================='
               
             endfor
             
@@ -735,7 +736,7 @@ openr, getDataLun, self.plsFilePath, /get_lun, /swap_if_big_endian
 ; keyword /all set -> returning all the points of the LAS file
 if keyword_set(ALL) then begin
 
-  self.out->print,1,"Formating pulse data..."
+  self.print,1,"Formating pulse data..."
   
   ; Retriving the data packet
   plsStructure = self.initPulseRecord()
@@ -746,9 +747,9 @@ if keyword_set(ALL) then begin
   index = lindgen((*(self.plsHeader)).nPulses)
   
   if (size(pulseData))[2] ne 8 then $
-    self.out->print,2,"Nothing return !" else $
-    self.out->print,1,strcompress('Number of pulse records returned: ' + string((*self.plsHeader).nPulses))
-  self.out->print,1, strcompress("Loading Time :"+string(SYSTIME(1) - T) +' Seconds')
+    self.print,2,"Nothing return !" else $
+    self.print,1,strcompress('Number of pulse records returned: ' + string((*self.plsHeader).nPulses))
+  self.print,1, strcompress("Loading Time :"+string(SYSTIME(1) - T) +' Seconds')
   
 endif
 
@@ -823,7 +824,7 @@ Function pulsewaves::readWaves, ALL=ALL
   ; keyword /all set -> returning all the points of the LAS file
   if keyword_set(ALL) then begin
   
-    self.out->print,1,"Formating waveform data..."
+    self.print,1,"Formating waveform data..."
     
     ; Retriving the data packet
     plsStructure = self.initPulseRecord()
@@ -834,9 +835,9 @@ Function pulsewaves::readWaves, ALL=ALL
     index = lindgen((*(self.plsHeader)).nPulses)
     
     if (size(pulseData))[2] ne 8 then $
-      self.out->print,2,"Nothing return !" else $
-      self.out->print,1,strcompress('Number of waveform records returned: ' + string((*self.plsHeader).nPulses))
-    self.out->print,1, strcompress("Loading Time :"+string(SYSTIME(1) - T) +' Seconds')
+      self.print,2,"Nothing return !" else $
+      self.print,1,strcompress('Number of waveform records returned: ' + string((*self.plsHeader).nPulses))
+    self.print,1, strcompress("Loading Time :"+string(SYSTIME(1) - T) +' Seconds')
     
   endif
   
@@ -970,7 +971,7 @@ Function pulsewaves::getPulses, index
   if N_elements(index) ne 0 then begin
 
     if max(index) ge (*self.plsHeader).npulses then begin
-      self.Out->print, 2, "Index out of range..."
+      self.print, 2, "Index out of range..."
       Return, 0
     endif else begin
       Return, (*self.plspulserec)[index]
@@ -1022,7 +1023,7 @@ Function pulsewaves::getWaves, index
   if N_elements(index) ne 0 then begin
 
     if Max(index) ge (*self.Plsheader).Npulses then begin
-      self.Out->print, 2, "Index out of range..."
+      self.print, 2, "Index out of range..."
       Return, 0
     endif else begin
       Return, (*self.wvswaverec)[index]
@@ -1074,7 +1075,7 @@ Function pulsewaves::getVlRecords, index
   if N_elements(index) ne 0 then begin
 
     if Max(index) ge (*self.plsHeader).nvlrecords then begin
-      self.Out->print, 2, "Index out of range..."
+      self.print, 2, "Index out of range..."
       Return, 0
     endif else begin
       Return, (*self.plsvlrarray)[index]
@@ -1124,7 +1125,7 @@ Function pulsewaves::getAVlRecords, index
   if N_elements(index) ne 0 then begin
 
     if Max(index) ge (*self.plsHeader).navlrecords then begin
-      self.Out->print, 2, "Index out of range..."
+      self.print, 2, "Index out of range..."
       Return, 0
     endif else begin
       Return, (*self.Plsavlrarray)[index]
