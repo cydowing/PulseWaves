@@ -21,6 +21,7 @@
 ; 	 -First implementation
 ; 	March 2014
 ; 	 - More serious developements
+;   September 2014
 ;
 ; :Author:
 ;   Antoine Cottin
@@ -492,7 +493,7 @@ Function pulsewaves::readVLR
               wValueOffset:0US$
               }
               
-            geoKeyArray = replicate(sKeyEntry, gkdTag.wNumberOfKeys)
+            geoKeyArray = replicate(sKeyEntry, geoKeyHeader.wNumberOfKeys)
             readu,1,geoKeyArray
             
             tempStruc = {header:geoKeyHeader, key:geoKeyArray}
@@ -749,7 +750,7 @@ if keyword_set(ALL) then begin
   if (size(pulseData))[2] ne 8 then $
     self.print,2,"Nothing return !" else $
     self.print,1,strcompress('Number of pulse records returned: ' + string((*self.plsHeader).nPulses))
-  self.print,1, strcompress("Loading Time :"+string(SYSTIME(1) - T) +' Seconds')
+    self.print,1, strcompress("Loading Time :"+string(SYSTIME(1) - T) +' Seconds')
   
 endif
 
@@ -1117,6 +1118,7 @@ End
 ; :History:
 ;   April 2014
 ;    -First implementation
+;   
 ;
 ; :Author: antoine
 ;-

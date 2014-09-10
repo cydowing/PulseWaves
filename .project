@@ -3,6 +3,7 @@
 	<name>PulseWaves</name>
 	<comment></comment>
 	<projects>
+		<project>sazerac</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
