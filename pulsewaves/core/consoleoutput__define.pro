@@ -162,3 +162,41 @@ endcase
 End
 
 
+
+; Function to output information on console
+Pro consoleOutput::printLUT, code, array
+
+  flag = 0
+
+  ;INFO    :: -> code 1
+  ;WARNING :: -> code 2
+  ;ERROR   :: -> code 3
+  codeString = ["::","INFO","WARNING","ERROR"]
+
+  invalid = where(abs(array) ge 1.e+2, /NULL)
+  
+  ; Converting array to string array
+  array = string(array)
+  
+  ; substitution of invalid value
+  if invalid ne !NULL then array[invalid] = '       empty'  ; Here we add 8-1 space in front of empty to align string
+  
+  ; Counting the number of line to 
+  n = N_elements(Array) / 8
+  
+  for i=0,n-1 do begin
+      
+    stringFormat= '(a-7,tr1,a2,tr3,'+String(n)+'(8a-12, :, " | "))'
+
+    case self.Consolesetup of
+      0:Print, FORMAT = stringFormat, codeString[code], codeString[0], Array[*,i]
+      1:Printf, self.Consolelun, codeString[code], codeString[0], stringArray, FORMAT = stringFormat
+      2:
+    endcase
+  
+  endfor
+
+
+End
+
+

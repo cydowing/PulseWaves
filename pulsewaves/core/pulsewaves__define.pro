@@ -700,13 +700,13 @@ Function pulsewaves::readVLR
                self.print,1, "      Number of entries: " + Strcompress(String(pulseLookupTable.nEntries))
                self.print,1, "      Unit of measurement: " + Strcompress(String(pulseLookupTable.unit))
                if pulseLookupTable.dataType eq 8B then self.print,1, "      Data type: 8 ('float')"
-               self.print,1, Strcompress("      Description: " + String(pulseLookupTable.description))
+               self.print,1, "      Description: " + Strcompress(String(pulseLookupTable.description))
                
                lookupTable = fltarr(pulseLookupTable.nEntries)
                readu, 1, lookupTable
 ;               self.print, 1, lookuptable
                
-               self.print, 1, "Done..."          
+               self.printLUT, 1, reform(lookupTable, 8, n_elements(lookupTable)/8)  
                
             endfor
                          
@@ -813,6 +813,7 @@ endif
 
 free_lun, getDataLun
 ; Updating data members
+self.print,1,"Linking pulse data to object's data member..."
 self.plspulserec = ptr_new(pulseData)
 self.plspulseInd = ptr_new(index)
 
@@ -901,6 +902,7 @@ Function pulsewaves::readWaves, ALL=ALL
   
   free_lun, getDataLun
   ; Updating data members
+  self.print,1,"Linking wave data to object's data member..."
   self.wvsWaverec = ptr_new(pulseData)
   self.wvsWaveInd = ptr_new(index)
   
