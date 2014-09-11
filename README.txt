@@ -16,6 +16,13 @@ https://github.com/PulseWaves
 
 For convinency to any IDL developer and for testing, we are hosting the same demo data and the file format specifications available on Martin's github page.
 
+=========
+IMPORTANT
+=========
+Fleurdelas needs the Sazerac library in order to works properly.
+So please don't forget to also clone our public Sazerac repository
+=========
+
 Enjoy.
 Antoine
 -----------------------
