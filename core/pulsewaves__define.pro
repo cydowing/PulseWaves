@@ -23,12 +23,14 @@
 ;
 ; :Author:
 ;   Antoine Cottin
+;   
 ;-
 Pro pulsewaves__define
 
 void = { pulsewaves, $
   plsFilePath   : "",$                ; Fully qualified path to the PLS file
   wvsFilePath   : "",$                ; Fully qualified path to the WVS file
+  plsStrtConst  : ptr_new(),$         ; Pointer to the constant that define some structure fields
   plsHeader     : ptr_new(),$         ; Pointer to the PLS Header data
   plsVlrArray   : ptr_new(),$         ; Pointer to the Variable Length Records (in reading order - Header/Key)
   plsPulseRec   : ptr_new(),$         ; Pointer to the records of the PLS file hold in the data member
@@ -37,8 +39,8 @@ void = { pulsewaves, $
   wvsHeader     : ptr_new(),$         ; Pointer to the header of the WVS file
   wvsWaveRec    : ptr_new(),$         ; Pointer to the records of the WVS file corresponding to the records in plsPulseRec
   wvsWaveInd    : ptr_new(),$         ; Pointer to the index corresponding to the records in plsPulseRec
-;  out           : obj_new() $         ; Object that allow nice print out
-  inherits consoleclass $
+  inherits consoleclass,$             ; Inherits from the consoleclass for formatted console and log ouptut
+  inherits pulsewavestools $          ; Inherits from the pulsewavestools to access full-waveform processing tools
 }
 
 End
@@ -66,24 +68,29 @@ End
 ;     The first implementation of this was dedicate to handle the log mode, verbose (default), quiet (/QUIET), file (/FILE).
 ;     If the keyword /FILE is passed, then a LOG = '/pasth/to/file.log' is required. If parameter LOG not provided a default
 ;       log file will be created.
-;    
-;  :Author:
-;     Antoine Cottin
 ;
 ;  :History:
 ;     -01/03/2014: Creation
+;     
+;  :Author:
+;     Antoine Cottin
 ;
 ;-
 Function pulsewaves::init, inputfile = file, _extra = console_options
 
   Compile_opt idl2
   
-  ; Checking the type of file, pls or wvs, and find the other accordingly
+  ; Call consoleclass superclass Initialization method.
+  dum = self->consoleclass::init(_extra = console_options)
+  ; Call pulsewavestools superclass Initialization method.
+  dum = self->pulsewavestools::init()
+  
+  ; Initialization of the constants for the structure definition
+  dum = self.initDataConstant()
   
   ; Initialazing data members
   self.plsHeader = ptr_new(self.initplsheader())
   ;self.plspulserec = ptr_new(self.initpulserecord())
-;  self.out = obj_new('consoleclass', _extra = console_options)
   
   ;Checking that the provided file exist
   exist = File_test(file)
@@ -120,6 +127,84 @@ End
 
 
 
+;+
+; :Description:
+;    This function initialized some object wide constant.
+;    Not sure if this is really usefull - defined from Pulsewaves_DLL
+;
+; :Category:
+; 	GENERAL
+;
+; :Return:
+; 	structure of constant
+;
+;	:Uses:
+;		dum = pulsewaves::initDataConstant()
+;
+; :History:
+; 	September 2014
+; 	 9/11 - first implementation
+;
+; :Author:
+;    Antoine Cottin
+;    
+;-
+Function pulsewaves::initDataConstant
+
+  void = {$
+    PLS_USER_ID_SIZE                                : 16 ,$
+    PLS_DESCRIPTION_SIZE                            : 64 ,$
+    PLS_UNDEFINED                                   : 0 ,$
+    PLS_OUTGOING                                    : 1 ,$
+    PLS_RETURNING                                   : 2 ,$
+    PLS_OSCILLATING                                 : 1 ,$
+    PLS_LINE                                        : 2 ,$
+    PLS_CONIC                                       : 3 ,$
+    PLS_OPTICAL_CENTER_AND_ANCHOR_POINT_COINCIDE    : '0x0'XB ,$
+    PLS_OPTICAL_CENTER_AND_ANCHOR_POINT_FLUCTUATE   : '0x8FFFFFFF'XUL ,$
+    PLS_PULSE_FORMAT_0                              : 0 ,$
+    PLS_PULSE_ATTRIBUTES_PULSE_SOURCE_ID_16BIT      : '0x00000001'XB ,$
+    PLS_PULSE_ATTRIBUTES_PULSE_SOURCE_ID_32BIT      : '0x00000002'XB ,$
+    PLS_PULSE_FORMAT_0_SIZE                         : 48 ,$
+    PLS_PULSE_ATTRIBUTES_PULSE_SOURCE_ID_16BIT_SIZE : 2 ,$
+    PLS_PULSE_ATTRIBUTES_PULSE_SOURCE_ID_32BIT_SIZE : 4 ,$
+    PLS_EMPTY_TABLE_ENTRY                           : -2.0e+37 ,$
+    PLS_TABLE_UNDEFINED                             : 0 ,$
+    PLS_TABLE_INTENSITY_CORRECTION                  : 1 ,$
+    PLS_TABLE_RANGE_CORRECTION                      : 2 $ ,$
+  }
+  
+  self.plsStrtConst = ptr_new(void)
+  return, 1
+  
+End
+
+
+
+;+
+; :Description:
+;    This function returns the associated WVS file from a PLS file.
+;
+; :Category:
+; 	GENERAL
+;
+; :Return:
+; 	A String representing the fully qualified path to the WVS file.
+;
+;	:Uses:
+;		Result = pulsewaves::getWaveFileName(plsfilename')
+;
+; :Params:
+;    plsfile, in, required, type = string
+;     A String representing the fully qualified path to the PLS file.
+;
+; :History:
+;   -01/03/2014: Creation
+;
+; :Author:
+;   Antoine Cottin
+;   
+;-
 Function pulsewaves::getWaveFileName, plsfile
 
   if strlowcase(!version.OS_NAME) eq "linux" or strlowcase(!version.OS_NAME) eq "mac os x" then spath='/' else spath='\'
@@ -135,6 +220,8 @@ End
 
 ;+
 ; Cleanup the object. This method is call automatically using the obj_destroy method.
+; This method is automatically called when the object is destroy - The user don't need
+; to call this function.
 ;
 ; :Categories:
 ;   GENERAL
@@ -151,12 +238,12 @@ End
 ;
 ;     Destroying the object
 ;       obj_destroy, plsObj
-;       
-;  :Author:
-;     Antoine Cottin
 ;   
 ;  :History:
 ;     -01/03/2014: Creation
+;
+;  :Author:
+;     Antoine Cottin
 ;
 ;-
 Function pulsewaves::cleanup
@@ -183,6 +270,26 @@ End
 
 
 
+;+
+; :Description:
+;    This function initialized the header structure.
+;
+; :Category:
+; 	GENERAL
+;
+; :Return:
+; 	A structure
+;
+;	:Uses:
+;		Result = pulsewaves::initplsheader()
+;
+; :History:
+;   -01/03/2014: Creation
+;
+; :Author:
+;   Antoine Cottin
+;   
+;-
 Function pulsewaves::initplsheader
 
 void = { plsheader, $
@@ -193,8 +300,8 @@ void = { plsheader, $
   guid2           : 0US,  $                       ; Project ID - GUID data 2
   guid3           : 0US,  $                       ; Project ID - GUID data 3
   guid4           : bytarr(8), $                  ; Project ID - GUID data 4
-  systemID        : bytarr(64), $                 ; System identifier
-  softwareID      : bytarr(64), $                 ; Generating software
+  systemID        : bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE), $                 ; System identifier
+  softwareID      : bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE), $                 ; Generating software
   day             : 0US,    $                     ; File creation day of year
   year            : 0US,    $                     ; File creation year
   versionMajor    : 1B, $                         ; Version major
@@ -233,14 +340,34 @@ End
 
 
 
+;+
+; :Description:
+;    This function initialized the Variable Length Record structure.
+;
+; :Category:
+;   GENERAL
+;
+; :Return:
+;   A structure
+;
+; :Uses:
+;   Result = pulsewaves::initplsvlr()
+;
+; :History:
+;   -01/03/2014: Creation
+;
+; :Author:
+;   Antoine Cottin
+;
+;-
 Function pulsewaves::initplsvlr
 
 void = {plsvlr, $
-  userID          : bytarr(16), $                 ; User ID, any string, remaining characters must be set to null
+  userID          : bytarr((*self.Plsstrtconst).PLS_USER_ID_SIZE), $                 ; User ID, any string, remaining characters must be set to null
   recordID        : 0UL, $                        ; ID for each vlr, define by manufacturer
   reserved        : 0Ul, $                        ; Reserved, must be set to 0
   recLengthAfter  : 0ULL, $                       ; Number of bytes contain in the vlr
-  description     : bytarr(64) $                  ; Null terminated text description. Any characters not used must be null
+  description     : bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE) $                  ; Null terminated text description. Any characters not used must be null
   }
 
 return, void
@@ -249,14 +376,34 @@ End
 
 
 
+;+
+; :Description:
+;    This function initialized the Append Variable Length Record structure.
+;
+; :Category:
+;   GENERAL
+;
+; :Return:
+;   A structure
+;
+; :Uses:
+;   Result = pulsewaves::initplsavlr()
+;
+; :History:
+;   -01/03/2014: Creation
+;
+; :Author:
+;   Antoine Cottin
+;
+;-
 Function pulsewaves::initplsavlr
 
   void = {plsvlr, $
-    userID          : bytarr(16), $                 ; User ID, any string, remaining characters must be set to null
+    userID          : bytarr((*self.Plsstrtconst).PLS_USER_ID_SIZE), $                 ; User ID, any string, remaining characters must be set to null
     recordID        : 0UL, $                        ; ID for each vlr, define by manufacturer
     reserved        : 0Ul, $                        ; Reserved, must be set to 0
     recLengthBefore : 0ULL, $                       ; Number of bytes contain in the vlr
-    description     : bytarr(64) $                  ; Null terminated text description. Any characters not used must be null
+    description     : bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE) $                  ; Null terminated text description. Any characters not used must be null
   }
   
   return, void
@@ -265,6 +412,26 @@ End
 
 
 
+;+
+; :Description:
+;    This function initialized the Pulse structure record.
+;
+; :Category:
+;   GENERAL
+;
+; :Return:
+;   A structure
+;
+; :Uses:
+;   Result = pulsewaves::initpulserecord()
+;
+; :History:
+;   -01/03/2014: Creation
+;
+; :Author:
+;   Antoine Cottin
+;
+;-
 Function pulsewaves::initpulserecord
 
 void = {pulserecord, $
@@ -289,10 +456,30 @@ End
 
 
 
+;+
+; :Description:
+;    This function initialized the WVS file header.
+;
+; :Category:
+;   GENERAL
+;
+; :Return:
+;   A structure
+;
+; :Uses:
+;   Result = pulsewaves::initwvsheader()
+;
+; :History:
+;   -01/03/2014: Creation
+;
+; :Author:
+;   Antoine Cottin
+;
+;-
 Function pulsewaves::initwvsheader
 
 void = {wvsheader, $
-  signature         : bytarr(16), $
+  signature         : bytarr((*self.Plsstrtconst).PLS_USER_ID_SIZE), $
   compression       : 0UL, $
   reserve           : bytarr(44) $
   }
@@ -316,7 +503,7 @@ Function pulsewaves::readHeader
   Openr, 1, self.plsFilePath, /swap_if_big_endian
 
   ; Check if the file is a PLS file
-  signature = Bytarr(16)
+  signature = bytarr((*self.Plsstrtconst).PLS_USER_ID_SIZE)
   Readu, 1, signature
 
   if String(signature) eq 'PulseWavesPulse' then begin
@@ -354,20 +541,20 @@ Function pulsewaves::readHeader
     self.print,1, Strcompress("Number of Append Variable Length Records: " + String(Fix((*self.plsheader).navlrecords)))
     self.print,1, Strcompress("T(ime) scale factor: " + String((*self.plsheader).tScale))
     self.print,1, Strcompress("T(ime) offset: " + String((*self.plsheader).tOffset))
-    self.print,1, Strcompress("Minimum T(ime): " + String((*self.plsheader).tMin)) 
-    self.print,1, Strcompress("Maximum T(ime): " + String((*self.plsheader).tMax)) 
-    self.print,1, Strcompress("X scale factor: " + String((*self.plsheader).xScale)) 
-    self.print,1, Strcompress("Y scale factor: " + String((*self.plsheader).yScale))
-    self.print,1, Strcompress("Z scale factor: " + String((*self.plsheader).zScale))
-    self.print,1, Strcompress("X offset factor: " + String((*self.plsheader).xOffset))
-    self.print,1, Strcompress("Y offset factor: " + String((*self.plsheader).yOffset))
-    self.print,1, Strcompress("Z offset factor: " + String((*self.plsheader).zOffset))   
-    self.print,1, Strcompress("X Minimum: " + String((*self.plsheader).xMin))
-    self.print,1, Strcompress("X Maximum: " + String((*self.plsheader).xMax))
-    self.print,1, Strcompress("Y Minimum: " + String((*self.plsheader).yMin))
-    self.print,1, Strcompress("Y Maximum: " + String((*self.plsheader).yMax))
-    self.print,1, Strcompress("Z Minimum: " + String((*self.plsheader).zMin))
-    self.print,1, Strcompress("Z Maximum: " + String((*self.plsheader).zMax))
+    self.print,1, Strcompress("Min Max T(ime): " + String((*self.plsheader).tMin)  + " " + String((*self.plsheader).tMax))
+    self.print,1, Strcompress("X Y Z scale factor: " + String((*self.Plsheader).Xscale) + " " + $
+                                                       String((*self.Plsheader).Yscale) + " " + $
+                                                       String((*self.Plsheader).Zscale))
+    self.print,1, Strcompress("X Y Z offset factor: " + String((*self.Plsheader).Xoffset) + " " + $
+                                                        String((*self.Plsheader).Yoffset) + " " + $
+                                                        String((*self.Plsheader).Zoffset))
+    self.print,1, Strcompress("X Y Z Minimum: " + String((*self.plsheader).xMin) + " " + $
+                                                  String((*self.plsheader).yMin) + " " + $
+                                                  String((*self.plsheader).zMin))                             
+    self.print,1, Strcompress("X Y Z Maximum: " + String((*self.plsheader).xMax) + " " + $
+                                                  String((*self.plsheader).yMax) + " " + $
+                                                  String((*self.plsheader).zMax))
+    
     
 ;    (*self.initplsheader)
     ; Sanity check of the header
@@ -406,10 +593,10 @@ End
 ;+
 ; :Description:
 ;    The purpose of this method is the read and extract the Variable Length Records from
-;    the public header block of the LAS file.
+;    the header block of the PLS file.
 ;
 ; :Category:
-;   LAS
+;   PLS
 ;
 ; :Return:
 ;   Will return 4 arrays:
@@ -529,8 +716,8 @@ Function pulsewaves::readVLR
             scannerKey = {$
               sizeK       : 0UL,$
               reserved    : 0UL,$
-              instrument  : bytarr(64),$
-              serial      : bytarr(64),$
+              instrument  : bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE),$
+              serial      : bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE),$
               wavelength  : 0. ,$
               outPlsWidth : 0. ,$
               scanPattern : 0UL,$
@@ -543,7 +730,7 @@ Function pulsewaves::readVLR
               beamDiv     : 0.,$
               minRange    : 0.,$
               maxRange    : 0.,$
-              description : bytarr(64) $
+              description : bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE) $
               }
             
             readu, 1, scannerKey 
@@ -585,7 +772,7 @@ Function pulsewaves::readVLR
               sampleUnit  : 0. ,$           ; Sampling unit
               scanIndex   : 0UL,$           ; Scanner Index
               compression : 0UL,$           ; Compression
-              description : bytarr(64) $
+              description : bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE) $
             }
             
             readu, 1, pulseKey
@@ -627,7 +814,7 @@ Function pulsewaves::readVLR
               LookupTableInde         : 0US,$
               sampleUnits             : 0. ,$
               compression             : 0UL,$
-              description : bytarr(64) $
+              description : bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE) $
             }
             
             samplingRecords = replicate(samplingKey, pulseKey.nSampling)
@@ -670,7 +857,7 @@ Function pulsewaves::readVLR
               sizeT       : 0UL,$           ; Size of table header
               reserved    : 0UL,$           ; Reserved
               nTables     : 0UL,$           ; Number of lookup tables
-              description : bytarr(64)$     ; Description
+              description : bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE)$     ; Description
             }
             
             readu, 1, pulseTable
@@ -693,7 +880,7 @@ Function pulsewaves::readVLR
                 dataType    : 0B,$            ; Must be set to 8 indicating data of type float
                 options     : 0B,$            ; Must be set to 0
                 compression : 0UL,$           ; Must be set to 0. May be added in the future to compress large tables
-                description :bytarr(64)$      ; Description
+                description :bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE)$      ; Description
                }
                
                readu, 1, pulseLookupTable
@@ -709,7 +896,7 @@ Function pulsewaves::readVLR
                readu, 1, lookupTable
 ;               self.print, 1, lookuptable
                
-               self.printLUT, 1, reform(lookupTable, 8, n_elements(lookupTable)/8)  
+               self.printLUT, 1, reform(lookupTable, 8, n_elements(lookupTable)/8), (*self.plsstrtconst).PLS_EMPTY_TABLE_ENTRY 
                
             endfor
                          
@@ -781,7 +968,7 @@ End
 ;     Set the boundingBox value as the minimum (cutoff) elevation value.
 ;     This is a required Keyword if the boundingBox has only one value.
 ;   all : in, optional, type=boolean
-;     If present, will return all the points of the LAS file.
+;     If present, will return all the points of the PLS file.
 ;   _ref_extra : in, optional, type=`strarr`
 ;     A `strarr[n]` that describ the n field(s) that need to be return.
 ;     If n=0 then all the fields are return.
@@ -794,7 +981,7 @@ T = SYSTIME(1)
 
 openr, getDataLun, self.plsFilePath, /get_lun, /swap_if_big_endian
 
-; keyword /all set -> returning all the points of the LAS file
+; keyword /all set -> returning all the points of the PLS file
 if keyword_set(ALL) then begin
 
   self.print,1,"Formating pulse data..."
@@ -870,7 +1057,7 @@ End
 ;     Set the boundingBox value as the minimum (cutoff) elevation value.
 ;     This is a required Keyword if the boundingBox has only one value.
 ;   all : in, optional, type=boolean
-;     If present, will return all the points of the LAS file.
+;     If present, will return all the points of the PLS file.
 ;   _ref_extra : in, optional, type=`strarr`
 ;     A `strarr[n]` that describ the n field(s) that need to be return.
 ;     If n=0 then all the fields are return.
@@ -883,7 +1070,7 @@ Function pulsewaves::readWaves, ALL=ALL
   
   openr, getDataLun, self.wvsFilePath, /get_lun, /swap_if_big_endian
   
-  ; keyword /all set -> returning all the points of the LAS file
+  ; keyword /all set -> returning all the points of the PLS file
   if keyword_set(ALL) then begin
   
     self.print,1,"Formating waveform data..."
