@@ -56,7 +56,7 @@ if n_elements(console_options) gt 0 then begin
         
       end
       
-      else : self.print, 2, 'Unknown case...'
+      else : self.print, 2, 'Unknown case, moving on...'
       
     endcase
 

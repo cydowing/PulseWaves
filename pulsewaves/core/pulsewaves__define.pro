@@ -35,7 +35,7 @@ void = { pulsewaves, $
   plsVlrArray   : ptr_new(),$         ; Pointer to the Variable Length Records (in reading order - Header/Key)
   plsPulseRec   : ptr_new(),$         ; Pointer to the records of the PLS file hold in the data member
   plsPulseInd   : ptr_new(),$         ; Pointer to the index of the records from the PLS file hold in plsPulseRec
-  plsAvlrarray  : ptr_new(),$         ; Pointer to the Appned Variable Length Records (in reading order - Header/Key)
+  plsAvlrarray  : ptr_new(),$         ; Pointer to the Append Variable Length Records (in reading order - Header/Key)
   wvsHeader     : ptr_new(),$         ; Pointer to the header of the WVS file
   wvsWaveRec    : ptr_new(),$         ; Pointer to the records of the WVS file corresponding to the records in plsPulseRec
   wvsWaveInd    : ptr_new(),$         ; Pointer to the index corresponding to the records in plsPulseRec
@@ -334,6 +334,7 @@ Function pulsewaves::readHeader
     ; Putting file data into data member
     Readu, 1, (*self.plsheader)
     
+    self.print,1,'========================================================='
     self.print,1, "Reading file header..."
     self.print,1, Strcompress("System identifier: " + String((*self.plsheader).systemID))
     self.print,1, Strcompress("Generating software: " + String((*self.plsheader).softwareID))
@@ -382,12 +383,12 @@ Function pulsewaves::readHeader
   Openr, 1, self.wvsFilePath, /swap_if_big_endian
   self.wvsHeader = ptr_new(self.initwvsheader())
   Readu, 1, (*self.wvsHeader)
-  if String(signature) eq 'PulseWavesPulse' then self.print, 1, "Header's signature is valid..." else begin
+  if String((*self.wvsHeader).signature) eq 'PulseWavesWaves' then self.print, 1, "Header's signature is valid..." else begin
     self.print, 2, "Header' signature is invalid !"
   endelse
-  
+  if (*self.wvsHeader).compression eq 1 then self.print, 1, "Waveforms are compressed..." else self.print, 1, "Waveforms are not compressed..."
   self.print,1, "Header read and stored..."
-
+  self.print,1,'========================================================='
   Return, 1
   
 endif else begin
@@ -431,6 +432,8 @@ End
 ;-
 Function pulsewaves::readVLR
 
+    ; Defining a flag for the number of pulseTable
+    plsTable = 0
   
      self.print,1, "Reading Variable Length Records..."
     ; Init VLR Header structure
@@ -447,6 +450,13 @@ Function pulsewaves::readVLR
  
       readu, 1, vlrStruct
 ;      print, vlrStruct.recordID
+      self.print,1,'========================================================='
+      self.print, 1, "Variable length header record " + strcompress(string(w+1), /REMOVE_ALL) + " of " + strcompress(string(((*self.plsheader).nvlrecords)), /REMOVE_ALL)
+      self.print, 1, "Reserved: " + strcompress(string(vlrStruct.reserved))
+      self.print, 1, "User ID: " + strcompress(string(vlrStruct.userid))
+      self.print, 1, "Record ID: " + strcompress(string(vlrStruct.recordid))
+      self.print, 1, "Length after header: " + strcompress(string(vlrStruct.reclengthafter))
+      self.print, 1, "Description: " + strcompress(string(vlrStruct.description))
       
       ; Creating a temp file that hold the nth VLR record - one file per record
       vlrArr[w] = ptr_new(vlrStruct)
@@ -515,7 +525,7 @@ Function pulsewaves::readVLR
             ; This key has a size of 248 bytes
             scannerKey = {$
               sizeK       : 0UL,$
-              reserver    : 0UL,$
+              reserved    : 0UL,$
               instrument  : bytarr(64),$
               serial      : bytarr(64),$
               wavelength  : 0. ,$
@@ -565,7 +575,7 @@ Function pulsewaves::readVLR
             ; This key has a size of 92 bytes
             pulseKey = {$
               sizeK       : 0UL,$           ;Size of the key
-              reserver    : 0UL,$           ; Reserved
+              reserved    : 0UL,$           ; Reserved
               opCentAnch  : 0L ,$           ; Optical Center to Anchor Point
               nEBytes     : 0US,$           ; Number of Extra Wave Bytes
               nSampling   : 0US,$           ; Number of Samplings
@@ -599,7 +609,7 @@ Function pulsewaves::readVLR
             ; This key has a size of 248 bytes
             samplingKey = {$
               sizeK                   : 0UL,$
-              reserver                : 0UL,$
+              reserved                : 0UL,$
               type                    : 0B ,$
               channel                 : 0B ,$
               unused                  : 0B ,$
@@ -652,7 +662,54 @@ Function pulsewaves::readVLR
         ; PulseWaves_Spec - TABLE  
         (vlrStruct.recordID ge 300001 and vlrStruct.recordID lt 300255): begin
           
+            ; This key has a size of 92 bytes
+            pulseTable = {$
+              sizeT       : 0UL,$           ; Size of table header
+              reserved    : 0UL,$           ; Reserved
+              nTables     : 0UL,$           ; Number of lookup tables
+              description : bytarr(64)$     ; Description
+            }
+            
+            readu, 1, pulseTable
+            
+            self.print,1,'  PULSETable ' + Strcompress(String(plsTable))
+
+            ; Printing the information
+            self.print,1, "   Number of tables: " + Strcompress(String(pulseTable.Ntables))
+            self.print,1, "   Description: " + Strcompress(String(pulseTable.Description))          
           
+            plsTable += 1
+            
+            for t = 0, pulseTable.Ntables-1 do begin
+            
+              pulseLookupTable = {$
+                sizeLT      : 0UL,$           ; Size of table header
+                reserved    : 0UL,$           ; Reserved
+                nEntries    : 0UL,$           ; Number of entries in lookup tables, typically 256, 1024, 4096, or 65536
+                unit        : 0US,$            ; Unit of measurement (0 = undefined, 1 = intensity correction, 2 = range correction)
+                dataType    : 0B,$            ; Must be set to 8 indicating data of type float
+                options     : 0B,$            ; Must be set to 0
+                compression : 0UL,$           ; Must be set to 0. May be added in the future to compress large tables
+                description :bytarr(64)$      ; Description
+               }
+               
+               readu, 1, pulseLookupTable
+               
+               self.print,1, "   PULSElookupTable " + Strcompress(String(t))
+               
+               self.print,1, "      Number of entries: " + Strcompress(String(pulseLookupTable.nEntries))
+               self.print,1, "      Unit of measurement: " + Strcompress(String(pulseLookupTable.unit))
+               if pulseLookupTable.dataType eq 8B then self.print,1, "      Data type: 8 ('float')"
+               self.print,1, Strcompress("      Description: " + String(pulseLookupTable.description))
+               
+               lookupTable = fltarr(pulseLookupTable.nEntries)
+               readu, 1, lookupTable
+;               self.print, 1, lookuptable
+               
+               self.print, 1, "Done..."          
+               
+            endfor
+                         
           end
     
         else: begin
