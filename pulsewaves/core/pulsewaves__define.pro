@@ -13,15 +13,13 @@
 ;	:Uses:
 ;		plsObj = obj_new('pulsewaves', inputfile = '/Path/To/PLS/File')
 ;
-;	:Example:
-;		A quick example on how to use this method
-;
 ; :History:
 ; 	September 2013
 ; 	 -First implementation
 ; 	March 2014
 ; 	 - More serious developements
 ;   September 2014
+;    - More support on the VLR, implementing VLR 300001 <= n < 300255
 ;
 ; :Author:
 ;   Antoine Cottin
@@ -40,7 +38,7 @@ void = { pulsewaves, $
   wvsWaveRec    : ptr_new(),$         ; Pointer to the records of the WVS file corresponding to the records in plsPulseRec
   wvsWaveInd    : ptr_new(),$         ; Pointer to the index corresponding to the records in plsPulseRec
 ;  out           : obj_new() $         ; Object that allow nice print out
-  inherits consoleoutput $
+  inherits consoleclass $
 }
 
 End
@@ -63,6 +61,11 @@ End
 ; :Keywords:
 ;    inputfile: in, required, type=string
 ;     This is the fully qualified path to the file
+;    _extra: in, optional, type=multiple
+;     This handles any parameters and/or keywords pass to the initialization procedure.
+;     The first implementation of this was dedicate to handle the log mode, verbose (default), quiet (/QUIET), file (/FILE).
+;     If the keyword /FILE is passed, then a LOG = '/pasth/to/file.log' is required. If parameter LOG not provided a default
+;       log file will be created.
 ;    
 ;  :Author:
 ;     Antoine Cottin
@@ -80,7 +83,7 @@ Function pulsewaves::init, inputfile = file, _extra = console_options
   ; Initialazing data members
   self.plsHeader = ptr_new(self.initplsheader())
   ;self.plspulserec = ptr_new(self.initpulserecord())
-;  self.out = obj_new('consoleoutput', _extra = console_options)
+;  self.out = obj_new('consoleclass', _extra = console_options)
   
   ;Checking that the provided file exist
   exist = File_test(file)
@@ -171,7 +174,7 @@ Function pulsewaves::cleanup
     self.wvsHeader,$
     self.plsavlrarray
 
-  ; Destroying the consoleOutput object
+  ; Destroying the consoleclass object
   self.print,1 , 'Destroying remaining objects...'
   self.print,1 , 'Bye :)'
   obj_destroy, self.out
@@ -305,8 +308,8 @@ Function pulsewaves::readHeader
 
 
   ; Compiling dependant procedure and function files
-;  Resolve_routine, 'consoleoutput__define', /COMPILE_FULL_FILE
-;  out = Obj_new('consoleoutput')
+;  Resolve_routine, 'consoleclass__define', /COMPILE_FULL_FILE
+;  out = Obj_new('consoleclass')
   
 
   ; Open the file
