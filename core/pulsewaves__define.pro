@@ -85,7 +85,10 @@ Function pulsewaves::init, INPUTFILE = FILE, TOOLS = TOOLS, _EXTRA = CONSOLE_OPT
   
   ; Call consoleclass superclass Initialization method.
   dum = self->consoleclass::init(_extra = console_options)
-
+  ; It the TOOLS keyword is set, then call pulsewavestools superclass Initialization method.
+  ; Not sure this will be relevant in the near future
+  self.print, 1, "Linking pulsewavestools to pulsewaves enabling Carbomap processing capability..."
+  if Keyword_set(tools) then dum = self->pulsewavestools::init(Ptr_new(self))
   
   ; Initialization of the constants for the structure definition
   dum = self.initDataConstant()
@@ -116,37 +119,33 @@ Function pulsewaves::init, INPUTFILE = FILE, TOOLS = TOOLS, _EXTRA = CONSOLE_OPT
   dum = self.readHeader()
   if (*self.plsheader).nvlrecords ne 0 then dum = self.readVLR()
   if (*self.plsheader).nPulses ne 0 then begin
-;    dum = self.readPulses(/ALL)
-
-    
-    
-    ;######################
-    ; If change nbridges to >= 20 then not all bridge
-    ; objects are destroyed and IDL session hangs
-    info = {type:"pulses"} 
-    Obridge = Obj_new('idl_idlbridge', CALLBACK='pulsewaves::BridgeCallback_pulsewaves', output='/Users/antoine/Desktop/pulsebridge.log')
-;    multithread_start, info.Obridges[i], info
-    Obridge->setvar, 'inputFile' , self.plsFilePath
-    Obridge->Execute, "print, !PATH"
-    Obridge->Execute, "RESOLVE_ROUTINE, 'getPulses_background', /COMPILE_FULL_FILE, /IS_FUNCTION"
-    Obridge->execute,'pulses=getPulses_background(inputFile)', /NOWAIT
-
-    ;######################
-    
-    
-;    dum = self.readWaves(/ALL)
+    dum = self.readPulses(/ALL)
+    dum = self.readWaves(/ALL)
   endif
   if (*self.plsheader).navlrecords ne 0 then dum = self.readAVLR()
   
   close, /ALL
-  
-  ; It the TOOLS keyword is set, then call pulsewavestools superclass Initialization method.
-  ; Not sure this will be relevant in the near future
-  if keyword_set(tools) then dum = self->pulsewavestools::init(ptr_new(self))
+ 
   
   return, 1
   
 End
+
+
+
+;Function pulsewaves::loadData
+;
+;  if (*self.plsheader).nPulses ne 0 then begin
+;    self.print, 1, "Loading pulses records into data member..."
+;    dum = self.readPulses(/ALL)
+;    self.print, 1, "Loading waveforms records into data member..."
+;    dum = self.readWaves(/ALL)
+;  endif
+;  
+;
+;  Return, 1
+;
+;End
 
 
 
@@ -1422,14 +1421,4 @@ Function pulsewaves::getAVlRecords, index
 End
 
 
-
-Pro pulsewaves::BridgeCallback_pulsewaves, status, error, Obridge, userdata
-print, 'in...'
-
-      returnedData = Obridge->getvar('pulses')
-      self.Plspulserec = ptr_new(returnedData)
-      Obj_destroy, pulsesObj
-
-
-End
 
