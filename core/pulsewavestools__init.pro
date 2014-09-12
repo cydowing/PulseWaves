@@ -24,15 +24,18 @@
 Pro pulsewavestools__define
 
 void = {pulsewavestools,$
-  plsAnchor     : ptr_new(),$         ; Pointer to a pointarrayclass that holds the anchor points coordinates
-  plsRays       : ptr_new() $         ; Pointer to a rayarrayclass that will holds the ray direction normilized 
+  pPulseWaves   : ptr_new(),$         ; Pointer to the pulsewaves object
+  plsAnchors    : ptr_new(),$         ; Pointer to a pointarrayclass that holds the anchor points coordinates
+  plsRays       : ptr_new(),$         ; Pointer to a rayarrayclass that will holds the ray direction normilized
+  plsTrajectory : ptr_new() $         ; Pointer to an array (n,3) representing the trajectory of the optical center
        }
 
 End
 
 
-Function pulsewavestools::init
+Function pulsewavestools::init, pPulsewaves
 
+self.pPulseWaves = pPulsewaves
 return, 1
 
 End
@@ -47,10 +50,37 @@ Function pulsewavestools::computeAnchorPoints, pPulsewaves
   offset = (*pPulsewaves).getHeaderProperty(/XYZOFFSET)
   pulses = (*pPulsewaves).getPulses()
   
-  return, vectorarrayclass($
+  self.plsAnchors = ptr_new( vectorarrayclass($
     [ (pulses.anchorX * scale.x) + offset.x ],$
     [ (pulses.anchorY * scale.y) + offset.y ],$
     [ (pulses.anchorZ * scale.z) + offset.z ] $
-    )
+    ) )
   
+  ; The result is effectively the optical center trajectory
+  self.plsTrajectory = self.plsAnchors
+  
+  return, *self.plsAnchors
+  
+End
+
+
+
+; This function will computes the anchors points contains in the PLS file
+; A pointer to the pulsewaves object need to be passed
+Function pulsewavestools::computeVectors, pPulsewaves
+
+  scale = (*pPulsewaves).getHeaderProperty(/XYZSCALE)
+  offset = (*pPulsewaves).getHeaderProperty(/XYZOFFSET)
+  pulses = (*pPulsewaves).getPulses()
+
+  self.Plstarget = Ptr_new( vectorarrayclass($
+    [ (pulses.Targetx * scale.X) + offset.X ],$
+    [ (pulses.Targety * scale.Y) + offset.Y ],$
+    [ (pulses.Targetz * scale.Z) + offset.Z ] $
+    ) )
+
+
+
+  Return, *self.Plsanchors
+
 End

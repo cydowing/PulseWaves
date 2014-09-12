@@ -61,29 +61,31 @@ End
 ;   plsObj = obj_new('pulsewaves', inputFile = '/Path/To/The/File.pls')
 ;       
 ; :Keywords:
-;    inputfile: in, required, type=string
+;    inputfile: in, required, type = string
 ;     This is the fully qualified path to the file
-;    _extra: in, optional, type=multiple
+;    _extra: in, optional, type = multiple
 ;     This handles any parameters and/or keywords pass to the initialization procedure.
 ;     The first implementation of this was dedicate to handle the log mode, verbose (default), quiet (/QUIET), file (/FILE).
 ;     If the keyword /FILE is passed, then a LOG = '/pasth/to/file.log' is required. If parameter LOG not provided a default
 ;       log file will be created.
+;    tools: in, optional, type = boolean
+;     If set, then the pulsewavestool class will be associated with this class
 ;
 ;  :History:
 ;     -01/03/2014: Creation
+;     -10/09/2014: Adding initialization of pulsewavestools and TOOLS keyword
 ;     
 ;  :Author:
 ;     Antoine Cottin
 ;
 ;-
-Function pulsewaves::init, inputfile = file, _extra = console_options
+Function pulsewaves::init, INPUTFILE = FILE, TOOLS = TOOLS, _EXTRA = CONSOLE_OPTIONS
 
   Compile_opt idl2
   
   ; Call consoleclass superclass Initialization method.
   dum = self->consoleclass::init(_extra = console_options)
-  ; Call pulsewavestools superclass Initialization method.
-  dum = self->pulsewavestools::init()
+
   
   ; Initialization of the constants for the structure definition
   dum = self.initDataConstant()
@@ -114,29 +116,33 @@ Function pulsewaves::init, inputfile = file, _extra = console_options
   dum = self.readHeader()
   if (*self.plsheader).nvlrecords ne 0 then dum = self.readVLR()
   if (*self.plsheader).nPulses ne 0 then begin
-    dum = self.readPulses(/ALL)
-    ; compute the coordinates and rays
-    dum = self.getCoordinates()
+;    dum = self.readPulses(/ALL)
+
     
     
-;    ;######################
-;    ; If change nbridges to >= 20 then not all bridge
-;    ; objects are destroyed and IDL session hangs
-;    t = Obj_new('idl_idlbridge',output='')
-;    t->setvar, 'header' , *self.plsHeader
-;    t->setvar, 'pulses' , *self.plsPulseRec
-;    t->execute, 'bar=foo-1.32423'
-;    junk = t->getvar('bar')
-;    Print, 'status:', t->status()
-;    Obj_destroy, t
-;    ;######################
+    ;######################
+    ; If change nbridges to >= 20 then not all bridge
+    ; objects are destroyed and IDL session hangs
+    info = {type:"pulses"} 
+    Obridge = Obj_new('idl_idlbridge', CALLBACK='pulsewaves::BridgeCallback_pulsewaves', output='/Users/antoine/Desktop/pulsebridge.log')
+;    multithread_start, info.Obridges[i], info
+    Obridge->setvar, 'inputFile' , self.plsFilePath
+    Obridge->Execute, "print, !PATH"
+    Obridge->Execute, "RESOLVE_ROUTINE, 'getPulses_background', /COMPILE_FULL_FILE, /IS_FUNCTION"
+    Obridge->execute,'pulses=getPulses_background(inputFile)', /NOWAIT
+
+    ;######################
     
     
-    dum = self.readWaves(/ALL)
+;    dum = self.readWaves(/ALL)
   endif
   if (*self.plsheader).navlrecords ne 0 then dum = self.readAVLR()
   
   close, /ALL
+  
+  ; It the TOOLS keyword is set, then call pulsewavestools superclass Initialization method.
+  ; Not sure this will be relevant in the near future
+  if keyword_set(tools) then dum = self->pulsewavestools::init(ptr_new(self))
   
   return, 1
   
@@ -1414,3 +1420,16 @@ Function pulsewaves::getAVlRecords, index
   endif else Return, *self.Plsavlrarray
 
 End
+
+
+
+Pro pulsewaves::BridgeCallback_pulsewaves, status, error, Obridge, userdata
+print, 'in...'
+
+      returnedData = Obridge->getvar('pulses')
+      self.Plspulserec = ptr_new(returnedData)
+      Obj_destroy, pulsesObj
+
+
+End
+
