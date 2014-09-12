@@ -452,19 +452,19 @@ End
 Function pulsewaves::initpulserecord
 
 void = {pulserecord, $
-  gpsTime           : 0ULL, $                     ; GPS time
-  waveOffset        : 0ULL, $                     ; Bytes offset to wave record
-  anchorX           : 0UL, $                      ; Anchor point of the wave
-  anchorY           : 0UL, $                      ; Anchor point of the wave
-  anchorZ           : 0UL, $                      ; Anchor point of the wave
-  targetX           : 0UL, $                      ; Ending point of the wave
-  targetY           : 0UL, $                      ; Ending point of the wave
-  targetZ           : 0UL, $                      ; Ending point of the wave
-  firstReturn       : 0US, $                      ; Duration in sampling units from the anchor point to the first recorded waveform sample
-  lastReturn        : 0US, $                      ; Duration in sampling units from the anchor point to the last recorded waveform sample
-  pulseDesIndex     : 0US, $                      ; To check
-  intensity         : 0B, $                       ; Intensity of the pulse in DN
-  classification    : 0B  $                       ; Classification of the pulse
+  gpsTime           : 0LL, $                     ; GPS time
+  waveOffset        : 0LL, $                     ; Bytes offset to wave record
+  anchorX           : 0L, $                      ; Anchor point of the wave
+  anchorY           : 0L, $                      ; Anchor point of the wave
+  anchorZ           : 0L, $                      ; Anchor point of the wave
+  targetX           : 0L, $                      ; Ending point of the wave
+  targetY           : 0L, $                      ; Ending point of the wave
+  targetZ           : 0L, $                      ; Ending point of the wave
+  firstReturn       : 0S, $                      ; Duration in sampling units from the anchor point to the first recorded waveform sample
+  lastReturn        : 0S, $                      ; Duration in sampling units from the anchor point to the last recorded waveform sample
+  pulseDesIndex     : 0US, $                     ; Contains information on: Pulse description index bit 0-7; Reserved bit 8-11; Edge of scan line bit 12; Scan direction bit 13; Mirror facet bit 14-15
+  intensity         : 0B, $                      ; Intensity of the pulse in DN
+  classification    : 0B  $                      ; Classification of the pulse
   }
   
 return, void
