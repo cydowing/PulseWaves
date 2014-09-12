@@ -24,7 +24,8 @@
 Pro pulsewavestools__define
 
 void = {pulsewavestools,$
-          null:0B$                            ; Void field to put something here
+  plsAnchor     : ptr_new(),$         ; Pointer to a pointarrayclass that holds the anchor points coordinates
+  plsRays       : ptr_new() $         ; Pointer to a rayarrayclass that will holds the ray direction normilized 
        }
 
 End
@@ -32,7 +33,24 @@ End
 
 Function pulsewavestools::init
 
-
 return, 1
 
+End
+
+
+
+; This function will computes the anchors points contains in the PLS file
+; A pointer to the pulsewaves object need to be passed
+Function pulsewavestools::computeAnchorPoints, pPulsewaves
+
+  scale = (*pPulsewaves).getHeaderProperty(/XYZSCALE)
+  offset = (*pPulsewaves).getHeaderProperty(/XYZOFFSET)
+  pulses = (*pPulsewaves).getPulses()
+  
+  return, vectorarrayclass($
+    [ (pulses.anchorX * scale.x) + offset.x ],$
+    [ (pulses.anchorY * scale.y) + offset.y ],$
+    [ (pulses.anchorZ * scale.z) + offset.z ] $
+    )
+  
 End

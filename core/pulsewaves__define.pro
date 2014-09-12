@@ -115,6 +115,23 @@ Function pulsewaves::init, inputfile = file, _extra = console_options
   if (*self.plsheader).nvlrecords ne 0 then dum = self.readVLR()
   if (*self.plsheader).nPulses ne 0 then begin
     dum = self.readPulses(/ALL)
+    ; compute the coordinates and rays
+    dum = self.getCoordinates()
+    
+    
+;    ;######################
+;    ; If change nbridges to >= 20 then not all bridge
+;    ; objects are destroyed and IDL session hangs
+;    t = Obj_new('idl_idlbridge',output='')
+;    t->setvar, 'header' , *self.plsHeader
+;    t->setvar, 'pulses' , *self.plsPulseRec
+;    t->execute, 'bar=foo-1.32423'
+;    junk = t->getvar('bar')
+;    Print, 'status:', t->status()
+;    Obj_destroy, t
+;    ;######################
+    
+    
     dum = self.readWaves(/ALL)
   endif
   if (*self.plsheader).navlrecords ne 0 then dum = self.readAVLR()
@@ -310,7 +327,7 @@ void = { plsheader, $
   offsetPulse     : 0ULL, $                       ; Offset to pulse data -- 352 bytes at this version
   nPulses         : 0ULL, $                       ; Number of point records
   pulseFormat     : 0UL, $                        ; Pulse format
-  pulseAttrib     : 0UL, $                        ; Pulse attribute
+  pulseAttrib     : 0UL, $                        ; Pulse attribute - a 16 bit pulse source ID (0x00000001) and a 32 bit pulse source ID (0x00000002)
   pulseSize       : 0UL, $                        ; Pulse size
   pulseCompress   : 0UL, $                        ; Pulse compression
   reserved        : 0ULL,  $                      ; Reserved
@@ -528,8 +545,7 @@ Function pulsewaves::readHeader
     self.print,1, "Reading file header..."
     self.print,1, Strcompress("System identifier: " + String((*self.plsheader).systemID))
     self.print,1, Strcompress("Generating software: " + String((*self.plsheader).softwareID))
-    self.print,1, Strcompress("Day of creation: " + String(Fix((*self.plsheader).day)))
-    self.print,1, Strcompress("Year of creation: " + String(Fix((*self.plsheader).year)))
+    self.print,1, "Day/Year of creation: " + Strcompress(String(Fix((*self.plsheader).day)) + "/" + String(Fix((*self.plsheader).year))) 
     self.print,1, Strcompress("Header size: " + String(Fix((*self.plsheader).headerSize)))   
     self.print,1, Strcompress("Byte offset to pulses block: " + String((*self.plsheader).offsetPulse))
     self.print,1, Strcompress("File contains " + String((*self.plsheader).nPulses) + " pulses.")
@@ -1131,9 +1147,11 @@ Function pulsewaves::getHeaderProperty, $
   XSCALE = XSCALE,$
   YSCALE = YSCALE,$
   ZSCALE = ZSCALE,$
+  XYZSCALE = XYZSCALE,$
   XOFFSET = XOFFSET,$
   YOFFSET = YOFFSET,$
   ZOFFSET = ZOFFSET,$
+  XYZOFFSET = XYZOFFSET,$
   XMIN = XMIN,$
   XMAX = XMAX,$
   YMIN = YMIN,$
@@ -1158,6 +1176,8 @@ if keyword_set(ZSCALE) then return, (*self.plsHeader).zscale
 if keyword_set(XOFFSET) then return, (*self.plsHeader).xoffset
 if keyword_set(YOFFSET) then return, (*self.plsHeader).yoffset
 if keyword_set(ZOFFSET) then return, (*self.plsHeader).zoffset
+if keyword_set(XYZSCALE) then return, {x:(*self.plsHeader).xscale,y:(*self.plsHeader).yscale,z:(*self.plsHeader).zscale}
+if keyword_set(XYZOFFSET) then return, {x:(*self.plsHeader).xoffset,y:(*self.plsHeader).yoffset,z:(*self.plsHeader).zoffset}
 if keyword_set(XMIN) then return, (*self.plsHeader).xmin
 if keyword_set(XMAX) then return, (*self.plsHeader).xmax
 if keyword_set(YMIN) then return, (*self.plsHeader).ymin
@@ -1281,6 +1301,15 @@ Function pulsewaves::getWaves, index
 
   endif else Return, *self.wvswaverec
   
+End
+
+
+
+
+Function pulsewaves::getCoordinates
+  
+  
+
 End
 
 
