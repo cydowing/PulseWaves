@@ -79,17 +79,30 @@ End
 ;     Antoine Cottin
 ;
 ;-
-Function pulsewaves::init, INPUTFILE = FILE, TOOLS = TOOLS, _EXTRA = CONSOLE_OPTIONS
+Function pulsewaves::init, INPUTFILE = FILE, $
+		PULSEINFO = PULSEINFO, $
+		CARBOMAP_TOOLS = CARBOMAP_TOOLS, EXTERNAL_TOOLS = EXTERNAL_TOOLS, 
+		$_EXTRA = CONSOLE_OPTIONS
 
   Compile_opt idl2
   
   ; Call consoleclass superclass Initialization method.
   dum = self->consoleclass::init(_extra = console_options)
+
   ; It the TOOLS keyword is set, then call pulsewavestools superclass Initialization method.
   ; Not sure this will be relevant in the near future
-  self.print, 1, "Linking pulsewavestools to pulsewaves enabling Carbomap processing capability..."
-  if Keyword_set(tools) then dum = self->pulsewavestools::init(Ptr_new(self))
-  
+  if Keyword_set(carbomap_tools) then begin
+      self.print, 1, "Linking pulsewavestools to pulsewaves enabling Carbomap add-on processing capability..."
+      dum = self->pulsewavestools::init(Ptr_new(self))
+  endif
+
+  ; This keyword is dedicate to enable common C/C++ tools develop by the community - need more developments
+  if Keyword_set(external_tools) then begin
+      self.print,1,"Linking C++ external tools to pulsewaves..."
+      ; To be implemented
+      externalToolsPath = EXTERNAL_TOOLS
+  endif
+
   ; Initialization of the constants for the structure definition
   dum = self.initDataConstant()
   
@@ -118,7 +131,7 @@ Function pulsewaves::init, INPUTFILE = FILE, TOOLS = TOOLS, _EXTRA = CONSOLE_OPT
   ; Loading data into data members
   dum = self.readHeader()
   if (*self.plsheader).nvlrecords ne 0 then dum = self.readVLR()
-  if (*self.plsheader).nPulses ne 0 then begin
+  if (*self.plsheader).nPulses ne 0 and PULSEINFO eq 1 then begin
     dum = self.readPulses(/ALL)
     dum = self.readWaves(/ALL)
   endif
@@ -528,6 +541,8 @@ Function pulsewaves::readHeader
   signature = bytarr((*self.Plsstrtconst).PLS_USER_ID_SIZE)
   Readu, 1, signature
 
+self.print, 1, "Opening " + strcompress(self.plsFilePath, /REMOVE_ALL)
+
   if String(signature) eq 'PulseWavesPulse' then begin
 
     self.print,1, 'PulseWaves file detected..."
@@ -546,7 +561,7 @@ Function pulsewaves::readHeader
     ; Putting file data into data member
     Readu, 1, (*self.plsheader)
     
-    self.print,1,'========================================================='
+    self.print,1,"========================================================="
     self.print,1, "Reading file header..."
     self.print,1, Strcompress("System identifier: " + String((*self.plsheader).systemID))
     self.print,1, Strcompress("Generating software: " + String((*self.plsheader).softwareID))
@@ -588,7 +603,8 @@ Function pulsewaves::readHeader
     endelse
 
   Close, 1
-  
+
+  self.print,1,"The associated waveform file is " + strcompress(self.wvsFilePath, /REMOVE_ALL)
   self.print,1, "Reading Header of the associated Waves file..."
   ; Open the file
   Openr, 1, self.wvsFilePath, /swap_if_big_endian
