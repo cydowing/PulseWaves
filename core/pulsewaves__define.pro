@@ -80,9 +80,10 @@ End
 ;
 ;-
 Function pulsewaves::init, INPUTFILE = FILE, $
-		PULSEINFO = PULSEINFO, $
-		CARBOMAP_TOOLS = CARBOMAP_TOOLS, EXTERNAL_TOOLS = EXTERNAL_TOOLS, 
-		$_EXTRA = CONSOLE_OPTIONS
+		CARBOMAP_TOOLS = CARBOMAP_TOOLS, $
+		EXTERNAL_TOOLS = EXTERNAL_TOOLS, $
+		RAPIDLASSO_API = RAPIDLASSO_API, $
+		_EXTRA = CONSOLE_OPTIONS
 
   Compile_opt idl2
   
@@ -131,7 +132,7 @@ Function pulsewaves::init, INPUTFILE = FILE, $
   ; Loading data into data members
   dum = self.readHeader()
   if (*self.plsheader).nvlrecords ne 0 then dum = self.readVLR()
-  if (*self.plsheader).nPulses ne 0 and PULSEINFO eq 1 then begin
+  if (*self.plsheader).nPulses ne 0 then begin
     dum = self.readPulses(/ALL)
     dum = self.readWaves(/ALL)
   endif
