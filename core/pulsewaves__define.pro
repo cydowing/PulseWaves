@@ -33,6 +33,7 @@ void = { pulsewaves, $
   plsStrtConst  : ptr_new(),$         ; Pointer to the constant that define some structure fields
   plsHeader     : ptr_new(),$         ; Pointer to the PLS Header data
   plsVlrArray   : ptr_new(),$         ; Pointer to the Variable Length Records (in reading order - Header/Key)
+  plsPulseDes   : ptr_new(),$         ; Pointer to an array of structure holding all the Pulse descriptor VLR
   plsPulseRec   : ptr_new(),$         ; Pointer to the records of the PLS file hold in the data member
   plsPulseInd   : ptr_new(),$         ; Pointer to the index of the records from the PLS file hold in plsPulseRec
   plsAvlrarray  : ptr_new(),$         ; Pointer to the Append Variable Length Records (in reading order - Header/Key)
@@ -689,6 +690,9 @@ Function pulsewaves::readVLR
     point_lun, 1, (*self.plsheader).headerSize
     
     ; This is pointer array that will hold the VLR, header/key, in reading order
+    vlrRecID = lonarr(((*self.plsheader).nvlrecords))
+    vlrSt = {header:ptr_new(),key:ptr_new()}
+    vlrStArr = replicate(vlrSt, ((*self.plsheader).nvlrecords))
     vlrArr = ptrarr(((*self.plsheader).nvlrecords) * 2)
     
     for w=0,((*self.plsheader).nvlrecords)-1 do begin
@@ -705,6 +709,8 @@ Function pulsewaves::readVLR
       self.print, 1, "Description: " + strcompress(string(vlrStruct.description))
       
       ; Creating a temp file that hold the nth VLR record - one file per record
+      vlrRecID[w] = vlrStruct.recordid
+      vlrStArr[w].header = ptr_new(vlrStruct)
       vlrArr[w] = ptr_new(vlrStruct)
       
       case 1 of
@@ -724,6 +730,7 @@ Function pulsewaves::readVLR
             readu, 1, wfDescriptor
             
             vlrArr[w+1] = ptr_new(wfDescriptor)
+            vlrStArr[w].key = ptr_new(wfDescriptor)
             
         end
         
@@ -753,6 +760,7 @@ Function pulsewaves::readVLR
             readu,1,geoKeyArray
             
             tempStruc = {header:geoKeyHeader, key:geoKeyArray}
+            vlrStArr[w].key = ptr_new(tempStruc)
             vlrArr[w+1] = ptr_new(tempStruc)
             tempStruc = 0
           
@@ -790,7 +798,9 @@ Function pulsewaves::readVLR
               }
             
             readu, 1, scannerKey 
+            vlrStArr[w].key = ptr_new(scannerKey)
             vlrArr[w+1] = ptr_new(scannerKey)
+            
             
             
             ; Printing the information
@@ -832,7 +842,7 @@ Function pulsewaves::readVLR
             }
             
             readu, 1, pulseKey
-            ;vlrArr[w+1] = ptr_new(pulseKey)
+;            vlrArr[w+1] = ptr_new(pulseKey)
             self.print,1,'Reading composition record...'
             
             ; Printing the information
@@ -975,6 +985,16 @@ endfor
 close,1
 self.plsvlrarray = ptr_new(vlrArr)
 
+return, 1
+
+End
+
+
+
+Function pulsewaves::createPlsPulseDescription, samplingHeader, samplingRecord
+
+
+if self.plsPulseDes eq !NULL then self.plsPulseDes = ptr_new(result) else self.plsPulseDes = ptr_new([previous,result])
 return, 1
 
 End
