@@ -492,6 +492,24 @@ End
 
 
 
+
+Function pulsewaves::initwaverecord
+
+keys = [$
+  "extraWavesbytes",$
+  "numberSegmentSampling0",$
+  "DurationSampleSegmentFromSampling",$
+  "SamplesSegmentfromSampling"$
+  ]
+;void = {waverecord, $
+;  
+;  }
+
+End
+
+
+
+
 ;+
 ; :Description:
 ;    This function initialized the WVS file header.
@@ -802,7 +820,7 @@ Function pulsewaves::readVLR
             
             ; This key has a size of 92 bytes
             pulseKey = {$
-              sizeK       : 0UL,$           ;Size of the key
+              sizeK       : 0UL,$           ; Size of the key
               reserved    : 0UL,$           ; Reserved
               opCentAnch  : 0L ,$           ; Optical Center to Anchor Point
               nEBytes     : 0US,$           ; Number of Extra Wave Bytes
@@ -865,14 +883,15 @@ Function pulsewaves::readVLR
               self.print,1,'========================================================='
               self.print,1,'Reading sampling record number ' + strcompress(string(k))
               
+              if samplingRecords[k].type eq 1B then type = "OUTGOING" else type = "RETURNING"
               ; Printing the information
-              self.print,1, Strcompress("Sampling type: " + String(samplingRecords[k].type))
-              self.print,1, Strcompress("Sampling channel: " + String(samplingRecords[k].channel))
-              self.print,1, Strcompress("Sampling bits for duration from anchor: " + String(samplingRecords[k].bitDurationFromAnchor))
+              self.print,1, Strcompress("Sampling type: " + type)
+              self.print,1, Strcompress("Sampling channel: " + String(fix(samplingRecords[k].channel)))
+              self.print,1, Strcompress("Sampling bits for duration from anchor: " + String(fix(samplingRecords[k].bitDurationFromAnchor)))
               self.print,1, Strcompress("Sampling scale for duration from anchor: : " + String(samplingRecords[k].scaleDurationFromAnchor))
               self.print,1, Strcompress("Sampling offset for duration from anchor: : " + String(samplingRecords[k].offsetDurationFromAnchor))
-              self.print,1, Strcompress("Sampling bits for number of segments: " + String(samplingRecords[k].bitForNSegments))
-              self.print,1, Strcompress("Sampling bits for number of samples : " + String(samplingRecords[k].bitForNSamples))
+              self.print,1, Strcompress("Sampling bits for number of segments: " + String(fix(samplingRecords[k].bitForNSegments)))
+              self.print,1, Strcompress("Sampling bits for number of samples : " + String(fix(samplingRecords[k].bitForNSamples)))
               self.print,1, Strcompress("Sampling number of segments : " + String(samplingRecords[k].nSegments))
               self.print,1, Strcompress("Sampling number of samples : " + String(samplingRecords[k].nSamples))
               self.print,1, Strcompress("Sampling bits per sample : " + String(samplingRecords[k].bitPerSample))
@@ -1136,6 +1155,15 @@ Function pulsewaves::readWaves, ALL=ALL
   
   Return, 1
   
+End
+
+
+
+Function pulsewaves::seek_pulse, INDEX = INDEX
+
+
+
+
 End
 
 

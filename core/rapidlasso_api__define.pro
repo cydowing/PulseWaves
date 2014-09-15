@@ -1,7 +1,7 @@
 Pro rapidlasso_api__define
 
-void = {rapidlasso,$
-  dum = 0 $
+void = {rapidlasso_api,$
+  dum : 0 $
   }
   
 End
@@ -19,107 +19,107 @@ End
 ;###########  MARTIN API FUNCTIONS  #############
 ;################################################
 
-Function rapidlasso_apiget_version
+Function rapidlasso_api::get_version
 
 End
 
-Function rapidlasso_apicreate
+Function rapidlasso_api::create
 
 End
 
-Function rapidlasso_apiget_error
+Function rapidlasso_api::get_error
 
 End
 
-Function rapidlasso_apidestroy
+Function rapidlasso_api::destroy
 
 End
 
-Function rapidlasso_apiheader_get
+Function rapidlasso_api::header_get
 
 End
 
-Function rapidlasso_apiheader_set
+Function rapidlasso_api::header_set
 
 End
 
-Function rapidlasso_apiheader_get_scanner
+Function rapidlasso_api::header_get_scanner
 
 End
 
-Function rapidlasso_apiheader_add_scanner
+Function rapidlasso_api::header_add_scanner
 
 End
 
-Function rapidlasso_apiheader_get_lookup_tables
+Function rapidlasso_api::header_get_lookup_tables
 
 End
 
-Function rapidlasso_apiheader_add_lookup_tables
+Function rapidlasso_api::header_add_lookup_tables
 
 End
 
-Function rapidlasso_apiheader_get_pulsedescriptor
+Function rapidlasso_api::header_get_pulsedescriptor
 
 End
 
-Function rapidlasso_apiheader_add_pulsedescriptor
+Function rapidlasso_api::header_add_pulsedescriptor
 
 End
 
-Function rapidlasso_apiheader_set_geokey_entries
+Function rapidlasso_api::header_set_geokey_entries
 
 End
 
-Function rapidlasso_apiheader_get_geokey_entries
+Function rapidlasso_api::header_get_geokey_entries
 
 End
 
-Function rapidlasso_apiheader_set_geodouble_params
+Function rapidlasso_api::header_set_geodouble_params
 
 End
 
-Function rapidlasso_apiheader_set_geoascii_params
+Function rapidlasso_api::header_set_geoascii_params
 
 End
 
-Function rapidlasso_apiheader_add_vlr
+Function rapidlasso_api::header_add_vlr
 
 End
 
-Function rapidlasso_apiwriter_open
+Function rapidlasso_api::writer_open
 
 End
 
-Function rapidlasso_apiwriter_write_pulse
+Function rapidlasso_api::writer_write_pulse
 
 End
 
-Function rapidlasso_apiwriter_write_waves
+Function rapidlasso_api::writer_write_waves
 
 End
 
-Function rapidlasso_apiwriter_close
+Function rapidlasso_api::writer_close
 
 End
 
-Function rapidlasso_apireader_open
+Function rapidlasso_api::reader_open
 
 End
 
-Function rapidlasso_apireader_seek_pulse
+Function rapidlasso_api::reader_seek_pulse
 
 End
 
-Function rapidlasso_apireader_read_pulse
+Function rapidlasso_api::reader_read_pulse
 
 End
 
-Function rapidlasso_apireader_read_waves
+Function rapidlasso_api::reader_read_waves
 
 End
 
-Function rapidlasso_apireader_close
+Function rapidlasso_api::reader_close
 
 End
 
