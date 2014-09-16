@@ -88,6 +88,9 @@ Function pulsewaves::init, INPUTFILE = FILE, $
 
   Compile_opt idl2
   
+  ; Closing any open previous file
+  close, 1
+  
   ; Call consoleclass superclass Initialization method.
   dum = self->consoleclass::init(_extra = console_options)
 
@@ -135,7 +138,7 @@ Function pulsewaves::init, INPUTFILE = FILE, $
   if (*self.plsheader).nvlrecords ne 0 then dum = self.readVLR()
   if (*self.plsheader).nPulses ne 0 then begin
     dum = self.readPulses(/ALL)
-    dum = self.readWaves(/ALL)
+;    dum = self.readWaves(/ALL)
   endif
   if (*self.plsheader).navlrecords ne 0 then dum = self.readAVLR()
   
@@ -691,8 +694,8 @@ Function pulsewaves::readVLR
     
     ; This is pointer array that will hold the VLR, header/key, in reading order
     vlrRecID = lonarr(((*self.plsheader).nvlrecords))
-    vlrSt = {header:ptr_new(),key:ptr_new()}
-    vlrStArr = replicate(vlrSt, ((*self.plsheader).nvlrecords))
+;    vlrSt = {header:ptr_new(),key:ptr_new()}
+;    vlrStArr = replicate(vlrSt, ((*self.plsheader).nvlrecords))
     vlrArr = ptrarr(((*self.plsheader).nvlrecords) * 2)
     
     for w=0,((*self.plsheader).nvlrecords)-1 do begin
@@ -710,8 +713,9 @@ Function pulsewaves::readVLR
       
       ; Creating a temp file that hold the nth VLR record - one file per record
       vlrRecID[w] = vlrStruct.recordid
-      vlrStArr[w].header = ptr_new(vlrStruct)
+;      vlrStArr[w].header = ptr_new(vlrStruct)
       vlrArr[w] = ptr_new(vlrStruct)
+
       
       case 1 of
       
@@ -730,7 +734,7 @@ Function pulsewaves::readVLR
             readu, 1, wfDescriptor
             
             vlrArr[w+1] = ptr_new(wfDescriptor)
-            vlrStArr[w].key = ptr_new(wfDescriptor)
+;            vlrStArr[w].key = ptr_new(wfDescriptor)
             
         end
         
@@ -760,7 +764,7 @@ Function pulsewaves::readVLR
             readu,1,geoKeyArray
             
             tempStruc = {header:geoKeyHeader, key:geoKeyArray}
-            vlrStArr[w].key = ptr_new(tempStruc)
+;            vlrStArr[w].key = ptr_new(tempStruc)
             vlrArr[w+1] = ptr_new(tempStruc)
             tempStruc = 0
           
@@ -798,7 +802,7 @@ Function pulsewaves::readVLR
               }
             
             readu, 1, scannerKey 
-            vlrStArr[w].key = ptr_new(scannerKey)
+;            vlrStArr[w].key = ptr_new(scannerKey)
             vlrArr[w+1] = ptr_new(scannerKey)
             
             
@@ -929,10 +933,10 @@ Function pulsewaves::readVLR
             
             readu, 1, pulseTable
             
-            self.print,1,'  PULSETable ' + Strcompress(String(plsTable))
+            self.print,1,'  PULSETable ' + Strcompress(String(plsTable), /REMOVE_ALL)
 
             ; Printing the information
-            self.print,1, "   Number of tables: " + Strcompress(String(pulseTable.Ntables))
+            self.print,1, "   Number of tables: " + Strcompress(String(pulseTable.Ntables), /REMOVE_ALL)
             self.print,1, "   Description: " + Strcompress(String(pulseTable.Description))          
           
             plsTable += 1
@@ -943,7 +947,7 @@ Function pulsewaves::readVLR
                 sizeLT      : 0UL,$           ; Size of table header
                 reserved    : 0UL,$           ; Reserved
                 nEntries    : 0UL,$           ; Number of entries in lookup tables, typically 256, 1024, 4096, or 65536
-                unit        : 0US,$            ; Unit of measurement (0 = undefined, 1 = intensity correction, 2 = range correction)
+                unit        : 0US,$           ; Unit of measurement (0 = undefined, 1 = intensity correction, 2 = range correction)
                 dataType    : 0B,$            ; Must be set to 8 indicating data of type float
                 options     : 0B,$            ; Must be set to 0
                 compression : 0UL,$           ; Must be set to 0. May be added in the future to compress large tables
@@ -952,20 +956,25 @@ Function pulsewaves::readVLR
                
                readu, 1, pulseLookupTable
                
-               self.print,1, "   PULSElookupTable " + Strcompress(String(t))
+               self.print,1, "   PULSElookupTable " + Strcompress(String(t), /REMOVE_ALL)
                
-               self.print,1, "      Number of entries: " + Strcompress(String(pulseLookupTable.nEntries))
-               self.print,1, "      Unit of measurement: " + Strcompress(String(pulseLookupTable.unit))
+               self.print,1, "      Number of entries: " + Strcompress(String(pulseLookupTable.nEntries), /REMOVE_ALL)
+               self.print,1, "      Unit of measurement: " + Strcompress(String(pulseLookupTable.unit), /REMOVE_ALL)
                if pulseLookupTable.dataType eq 8B then self.print,1, "      Data type: 8 ('float')"
                self.print,1, "      Description: " + Strcompress(String(pulseLookupTable.description))
                
                lookupTable = fltarr(pulseLookupTable.nEntries)
                readu, 1, lookupTable
 ;               self.print, 1, lookuptable
-               
+
+               if t eq 0 then void = {LUTheader:pulseLookupTable,LUTTable:lookupTable} else void = [void, {LUTheader:pulseLookupTable,LUTTable:lookupTable}]
+
+
                self.printLUT, 1, lookupTable, (*self.plsstrtconst).PLS_EMPTY_TABLE_ENTRY 
                
             endfor
+            
+            vlrArr[w+1] = ptr_new({compositionRecord:pulseTable, tableRecord:void})
                          
           end
     
