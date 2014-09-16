@@ -963,7 +963,7 @@ Function pulsewaves::readVLR
                readu, 1, lookupTable
 ;               self.print, 1, lookuptable
                
-;               self.printLUT, 1, reform(lookupTable, 8, n_elements(lookupTable)/8), (*self.plsstrtconst).PLS_EMPTY_TABLE_ENTRY 
+               self.printLUT, 1, lookupTable, (*self.plsstrtconst).PLS_EMPTY_TABLE_ENTRY 
                
             endfor
                          
