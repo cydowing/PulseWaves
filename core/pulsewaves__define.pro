@@ -36,6 +36,7 @@ void = { pulsewaves, $
   plsPulseDes   : ptr_new(),$         ; Pointer to an array of structure holding all the Pulse descriptor VLR
   plsPulseRec   : ptr_new(),$         ; Pointer to the records of the PLS file hold in the data member
   plsPulseInd   : ptr_new(),$         ; Pointer to the index of the records from the PLS file hold in plsPulseRec
+  plsPulseIndSel: ptr_new(),$         ; Pointer to an index of the selected pulses defined by pulsewaves::getPulses
   plsAvlrarray  : ptr_new(),$         ; Pointer to the Append Variable Length Records (in reading order - Header/Key)
   wvsHeader     : ptr_new(),$         ; Pointer to the header of the WVS file
   wvsWaveRec    : ptr_new(),$         ; Pointer to the records of the WVS file corresponding to the records in plsPulseRec
@@ -638,7 +639,7 @@ self.print, 1, "Opening " + strcompress(self.plsFilePath, /REMOVE_ALL)
   endelse
   if (*self.wvsHeader).compression eq 1 then self.print, 1, "Waveforms are compressed..." else self.print, 1, "Waveforms are not compressed..."
   self.print,1, "Header read and stored..."
-  self.print,1,'========================================================='
+  self.printsep
   Return, 1
   
 endif else begin
@@ -703,7 +704,7 @@ Function pulsewaves::readVLR
  
       readu, 1, vlrStruct
 ;      print, vlrStruct.recordID
-      self.print,1,'========================================================='
+      self.printsep
       self.print, 1, "Variable length header record " + strcompress(string(w+1), /REMOVE_ALL) + " of " + strcompress(string(((*self.plsheader).nvlrecords)), /REMOVE_ALL)
       self.print, 1, "Reserved: " + strcompress(string(vlrStruct.reserved))
       self.print, 1, "User ID: " + strcompress(string(vlrStruct.userid))
@@ -714,7 +715,7 @@ Function pulsewaves::readVLR
       ; Creating a temp file that hold the nth VLR record - one file per record
       vlrRecID[w] = vlrStruct.recordid
 ;      vlrStArr[w].header = ptr_new(vlrStruct)
-      vlrArr[w] = ptr_new(vlrStruct)
+      vlrArr[w*2] = ptr_new(vlrStruct)
 
       
       case 1 of
@@ -733,7 +734,7 @@ Function pulsewaves::readVLR
             }
             readu, 1, wfDescriptor
             
-            vlrArr[w+1] = ptr_new(wfDescriptor)
+            vlrArr[(w*2)+1] = ptr_new(wfDescriptor)
 ;            vlrStArr[w].key = ptr_new(wfDescriptor)
             
         end
@@ -765,7 +766,7 @@ Function pulsewaves::readVLR
             
             tempStruc = {header:geoKeyHeader, key:geoKeyArray}
 ;            vlrStArr[w].key = ptr_new(tempStruc)
-            vlrArr[w+1] = ptr_new(tempStruc)
+            vlrArr[(w*2)+1] = ptr_new(tempStruc)
             tempStruc = 0
           
         end
@@ -803,7 +804,7 @@ Function pulsewaves::readVLR
             
             readu, 1, scannerKey 
 ;            vlrStArr[w].key = ptr_new(scannerKey)
-            vlrArr[w+1] = ptr_new(scannerKey)
+            vlrArr[(w*2)+1] = ptr_new(scannerKey)
             
             
             
@@ -889,12 +890,12 @@ Function pulsewaves::readVLR
             
             samplingRecords = replicate(samplingKey, pulseKey.nSampling)
             readu, 1, samplingRecords
-            vlrArr[w+1] = ptr_new({compositionRecord:pulseKey, samplingRecord:samplingRecords})
+            vlrArr[(w*2)+1] = ptr_new({compositionRecord:pulseKey, samplingRecord:samplingRecords})
 ;            print, samplingRecords
             
             for k = 0, pulseKey.nSampling-1 do begin
               
-              self.print,1,'========================================================='
+              self.printsep
               self.print,1,'Reading sampling record number ' + strcompress(string(k))
               
               if samplingRecords[k].type eq 1B then type = "OUTGOING" else type = "RETURNING"
@@ -914,7 +915,7 @@ Function pulsewaves::readVLR
               self.print,1, Strcompress("Sampling compression : " + String(samplingRecords[k].compression))
               self.print,1, Strcompress("Sampling description : " + String(samplingRecords[k].description))
               
-              if k eq pulseKey.nSampling-1 then self.print,1,'========================================================='
+              if k eq pulseKey.nSampling-1 then self.printsep
               
             endfor
             
@@ -974,7 +975,7 @@ Function pulsewaves::readVLR
                
             endfor
             
-            vlrArr[w+1] = ptr_new({compositionRecord:pulseTable, tableRecord:void})
+            vlrArr[(w*2)+1] = ptr_new({compositionRecord:pulseTable, tableRecord:void})
                          
           end
     
@@ -983,7 +984,7 @@ Function pulsewaves::readVLR
             generic = bytarr(vlrStruct.recLengthAfter)
             readu,1,generic
 
-            vlrArr[w+1] = ptr_new(generic)
+            vlrArr[(w*2)+1] = ptr_new(generic)
           
         end
         
@@ -992,6 +993,7 @@ Function pulsewaves::readVLR
 endfor
 
 close,1
+self.Plspulsedes = ptr_new(vlrRecID)
 self.plsvlrarray = ptr_new(vlrArr)
 
 return, 1
@@ -1060,7 +1062,7 @@ End
 ;     If n=0 then all the fields are return.
 ;
 ;-
-Function pulsewaves::readPulses, ALL=ALL
+Function pulsewaves::readPulses, INDEX = INDEX, CURRENT = CURRENT, ALL=ALL
 
 ; start time
 T = SYSTIME(1)
@@ -1149,42 +1151,202 @@ End
 ;     If n=0 then all the fields are return.
 ;
 ;-
-Function pulsewaves::readWaves, ALL=ALL
+Function pulsewaves::readWaves
 
   ; start time
   T = SYSTIME(1)
   
   openr, getDataLun, self.wvsFilePath, /get_lun, /swap_if_big_endian
+  ; Retriving the wave data packet
+  plsStructure = self.initWaveRecord()
   
-  ; keyword /all set -> returning all the points of the PLS file
-  if keyword_set(ALL) then begin
+  self.printsep
+    
+    nIndex = N_elements(*self.Plspulseindsel)
+    
+    case 1 of
+      
+      nIndex eq 1 : begin
+        
+            ; Need to get the wavefrom bytes offset
+            byteOffset = ((*self.plsPulseRec)[*self.Plspulseindsel]).waveOffset
+    
+            ; Need to format the waveform data block based on Pulse Descriptor information
+            ; Getting the pulse descriptor value
+            pDes = ((*self.plsPulseRec)[*self.Plspulseindsel]).pulseDesIndex
+            descriptorVal = (pDes AND '11111111'bb) + 200000
+            
+            ; Retreiving the corresponding VLR
+            vlr = self.getVLRecords(RECORDID = descriptorVal)
+            
+            
+            ; Because the pulse can be fragmented it might not be possible to read the pulse as a block
+            ; Checking pulse descriptor for information
+            
+            ; Reading the Number of Extra Waves Bytes" information
+            extraBytes = ((*vlr[1]).(0)).(3)
+            movingTo = byteOffset + extraBytes
+            ; Read the waveform block
+            self.print, 1, "Waves block #" + Strcompress(string(*self.Plspulseindsel),/REMOVE_ALL) + " is located at byte " + Strcompress(string(movingTo),/REMOVE_ALL)
+            
+            Point_lun, getDataLun, byteOffset + extraBytes       
+            
+            ; Getting information for all the Sampling Records
+            pulseType = ((*vlr[1]).(1)).(2)
+            plsBtDura = ((*vlr[1]).(1)).(5)
+            pulseScal = ((*vlr[1]).(1)).(6)
+            pulseOffs = ((*vlr[1]).(1)).(7)
+            plsBtNSeg = ((*vlr[1]).(1)).(8)
+            plsBtNSam = ((*vlr[1]).(1)).(9)
+            pulseNSeg = ((*vlr[1]).(1)).(10)
+            pulseNSam = ((*vlr[1]).(1)).(11)
+                 
+            ; Reading for each pulse the information            
+            for p = 0, N_elements(pulseType)-1 do begin
+
+              self.printsep
+              
+              if pulseType[p] eq 1 then self.print, 1, Strcompress("The pulse is OUTGOING...") else self.print, 1, Strcompress("The pulse is RETURNING...") 
+              ; Number of Segments in Sampling 0:
+              ; Exist only if “Bits for Number of Segments” in Sampling != 0 => Specifies the Number of Segments in this Sampling.
+              ; If “Bits for Number of Segments” == 0 => Number of Segment = constant and specified in Number of Segments in Sampling Record
+                            
+              if plsBtNSeg[p] eq 0 then begin
+                
+                self.print, 1, "Pulse has a fixed segmentation..."
+                pulseNumberSegment = pulseNSeg[p]
+                self.print, 1, Strcompress("Number of segment(s) in Sampling #" + string(p+1) + " : " + string(pulseNumberSegment) + "...")
+                
+              endif else begin
+                
+                self.print, 1, 'Pulse has a variable segmentation..."
+                self.print, 1, 'Reading information from file...'
+                pulseNumberSegment = self.fieldDataCreator(plsBtNSeg[p])
+                readu, getDataLun, pulseNumberSegment
+                self.print, 1, Strcompress("Number of segment(s) in Sampling #" + string(p+1) + " : " + string(pulseNumberSegment) + "...")
+                
+              endelse
+              
+;              self.printsep
+              
+              for seg = 0,pulseNumberSegment-1 do begin
+                
+                ; Duration from Anchor for Segment k of Sampling m:
+                ; Exist only if “Bits for Duration from Anchor” in Sampling Record != 0
+                ; if “Bits for Duration from Anchor” == 0 in Sampling Record => then duration == 0 => anchor point coincide with first Sample of Sampling
+                if plsBtDura[p] eq 0 then begin
+                
+  ;                self.print, 1, 'Bits for Duration from Anchor = 0'
+  ;                  
+                  self.print, 1, 'The first sample of the pulse coincides with the Anchor Point...'
+                  durationFromAnchor = 0.
+                  
+                endif else begin
+                
+                  self.print, 1, "Pulse has a variable segmentation..."
+                  self.print, 1, "Reading information from file..."
+                  durationFromAnchor = self.fieldDataCreator(plsBtDura[p])
+                  Readu, getDataLun, durationFromAnchor
+                  self.print, 1, Strcompress("Duration from Anchor: " + string(durationFromAnchor) + "...")
+                  self.print, 1, Strcompress("Scale offset: " + String(pulseScal[p]) + " " + String(pulseOffs[p]) )
+                  self.print, 1, Strcompress("Final duration from anchor: " + String(durationFromAnchor *pulseScal[p] +pulseOffs[p]) )
+                  
+                endelse
+                
+                for s = 0, pulseNumberSegment-1 do begin
+                  
+                  ; Number of Samples in Segment k from Sampling m:
+                  ; Exist if “bits for Number of Samples” in Sampling Record is non-zero => Number of Samples in the next Segment.
+                  ; If Sampling Record is == 0 => Number of Sample is fixed and is == “Number of Samples” in Sampling Record
+                  if plsBtNSam[p] eq 0 then begin
+                    
+                    self.print, 1, "Pulse has a fixed sampling..."
+                    pulseNumberSample = pulseNSam[p]
+                    self.print, 1, Strcompress("Number of samples in the Segment: " + String(pulseNumberSample) + "...")
+                    pulseNSam
+                    
+                  endif else begin
+    
+                    self.print, 1, "Pulse has a variable sampling..."
+                    self.print, 1, 'Reading information from file...'
+                    pulseNumberSample = self.fieldDataCreator(plsBtNSam[p])
+                    Readu, getDataLun, pulseNumberSample
+                    self.print, 1, "Number of samples in Segment #" + Strcompress(String(p),/REMOVE_ALL) + " of Sampling #" + Strcompress(String(s),/REMOVE_ALL) + ": " + Strcompress(string(pulseNumberSample),/REMOVE_ALL)
+                    
+                  endelse
+                  
+                  ; Reading the waves
+                  waves = bytarr(pulseNumberSample)
+                  self.print, 1, "Reading Waves of Segment #" + Strcompress(String(p),/REMOVE_ALL) + " of Sampling #" + Strcompress(String(s),/REMOVE_ALL)
+                  Readu, getDataLun, waves
+                  if n_elements(waves) gt 1 then plot, waves
+                  
+                endfor
+                
+                self.printsep
+                
+              endfor
+              
+              
+              
+            endfor
+            
+
+            
+          end
+             
+      nIndex eq 2 : begin
+
+
+          end
+           
+     nIndex gt 2 : begin
+
+
+          end
+             
+    endcase
   
-    self.print,1,"Formating waveform data..."
-    
-    ; Retriving the data packet
-    plsStructure = self.initPulseRecord()
-    pulseData = replicate(plsStructure, (*self.plsHeader).nPulses)
-    point_lun, getDataLun, 60 ; 60 bytes is the size of the WVS file header
-    readu, getDataLun, pulseData
-    
-    index = lindgen((*(self.plsHeader)).nPulses)
+;    self.print,1,"Formating waveform data..."
+;    
+;    
+;    pulseData = replicate(plsStructure, (*self.plsHeader).nPulses)
+;    point_lun, getDataLun, 60 ; 60 bytes is the size of the WVS file header
+;    readu, getDataLun, pulseData
+;    
+;    index = lindgen((*(self.plsHeader)).nPulses)
     
     if (size(pulseData))[2] ne 8 then $
       self.print,2,"Nothing return !" else $
       self.print,1,strcompress('Number of waveform records returned: ' + string((*self.plsHeader).nPulses))
     self.print,1, strcompress("Loading Time :"+string(SYSTIME(1) - T) +' Seconds')
     
-  endif
+
   
   free_lun, getDataLun
-  ; Updating data members
-  self.print,1,"Linking wave data to object's data member..."
-  self.wvsWaverec = ptr_new(pulseData)
-  self.wvsWaveInd = ptr_new(index)
+;  ; Updating data members
+;  self.print,1,"Linking wave data to object's data member..."
+;  self.wvsWaverec = ptr_new(pulseData)
+;  self.wvsWaveInd = ptr_new(index)
   
   Return, 1
   
 End
+
+
+
+Function pulsewaves::fieldDataCreator, bitSize
+
+case bitSize of
+  8 : data = 0B
+  16: data = 0
+  32: data = 0L
+  ELSE:
+endcase
+
+return, data 
+
+end
 
 
 
@@ -1323,10 +1485,14 @@ Function pulsewaves::getPulses, index
       self.print, 2, "Index out of range..."
       Return, 0
     endif else begin
+      self.plsPulseIndSel = ptr_new(index)
       Return, (*self.plspulserec)[index]
     endelse
 
-  endif else Return, *self.plspulserec
+  endif else begin
+    self.plsPulseIndSel = self.plspulseind
+    Return, *self.plspulserec
+  endelse
   
 End
 
@@ -1428,18 +1594,29 @@ End
 ;
 ; :Author: antoine
 ;-
-Function pulsewaves::getVlRecords, index
+Function pulsewaves::getVlRecords, INDEX = INDEX, RECORDID = RECORDID
 
-  if N_elements(index) ne 0 then begin
+  if keyword_set(INDEX) then begin
 
-    if Max(index) ge (*self.plsHeader).nvlrecords then begin
+    if Max(INDEX) ge (*self.plsHeader).nvlrecords then begin
       self.print, 2, "Index out of range..."
       Return, 0
     endif else begin
-      Return, (*self.plsvlrarray)[index]
+      Return, (*self.plsvlrarray)[INDEX]
     endelse
 
-  endif else Return, *self.plsvlrarray
+  endif 
+  
+  if keyword_set(RECORDID) then begin
+    
+    id = where( (*self.Plspulsedes) eq RECORDID, /NULL)
+    if id ne !NULL then begin
+      return, [(*self.plsvlrarray)[id*2], (*self.plsvlrarray)[(id*2)+1]]
+    endif
+    
+  endif
+  
+  Return, *self.plsvlrarray
   
 End
 
