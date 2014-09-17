@@ -19,8 +19,8 @@ For convinency to any IDL developer and for testing, we are hosting the same dem
 =========
 IMPORTANT
 =========
-Fleurdelas needs the Sazerac library in order to works properly.
-So please don't forget to also clone our public Sazerac repository
+Pulsewaves needs the Sazerac library in order to work properly.
+So please don't forget to also clone our Sazerac repository
 =========
 
 Enjoy.
