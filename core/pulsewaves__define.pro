@@ -41,8 +41,9 @@ void = { pulsewaves, $
   wvsHeader     : ptr_new(),$         ; Pointer to the header of the WVS file
   wvsWaveRec    : ptr_new(),$         ; Pointer to the records of the WVS file corresponding to the records in plsPulseRec
   wvsWaveInd    : ptr_new(),$         ; Pointer to the index corresponding to the records in plsPulseRec
-  inherits consoleclass,$             ; Inherits from the consoleclass for formatted console and log ouptut
-  inherits pulsewavestools $          ; Inherits from the pulsewavestools to access full-waveform processing tools
+  bitNoPrint    : 0B,$                ; Byte that specify if the print out of the HEADER/VLR/AVLR is enable or disable
+  inherits consoleclass $             ; Inherits from the consoleclass for formatted console and log ouptut
+;  inherits pulsewavestools $          ; Inherits from the pulsewavestools to access full-waveform processing tools
 }
 
 End
@@ -85,6 +86,9 @@ Function pulsewaves::init, INPUTFILE = FILE, $
 		CARBOMAP_TOOLS = CARBOMAP_TOOLS, $
 		EXTERNAL_TOOLS = EXTERNAL_TOOLS, $
 		RAPIDLASSO_API = RAPIDLASSO_API, $
+		NO_HEADER = NO_HEADER, $
+		NO_VLR = NO_VLR,$
+		NO_AVLR = NO_AVLR,$
 		_EXTRA = CONSOLE_OPTIONS
 
   Compile_opt idl2
@@ -107,6 +111,19 @@ Function pulsewaves::init, INPUTFILE = FILE, $
       self.print,1,"Linking C++ external tools to pulsewaves..."
       ; To be implemented
       externalToolsPath = EXTERNAL_TOOLS
+  endif
+
+  ; Set the bit to not print the header
+  if keyword_set(NO_HEADER) then begin
+    self.BitNoPrint = self.BitNoPrint or '00000001'bb
+  endif
+  ; Set the bit to not print the vlr
+  if Keyword_set(NO_VLR) then begin
+    self.Bitnoprint = self.Bitnoprint or '00000010'bb
+  endif
+  ; Set the bit to not print the avlr  
+  if Keyword_set(NO_AVLR) then begin
+    self.Bitnoprint = self.Bitnoprint or '00000100'bb
   endif
 
   ; Initialization of the constants for the structure definition
@@ -557,7 +574,9 @@ Function pulsewaves::readHeader
 ;  Resolve_routine, 'consoleclass__define', /COMPILE_FULL_FILE
 ;  out = Obj_new('consoleclass')
   
-
+  ; Checking if the keyword NO_HEADER has been passed - if so, disable the printing
+  if self.bitnoprint and '00000001'bb eq 1 then dum = self.setMode(2)
+  
   ; Open the file
   Openr, 1, self.plsFilePath, /swap_if_big_endian
 
@@ -640,12 +659,18 @@ self.print, 1, "Opening " + strcompress(self.plsFilePath, /REMOVE_ALL)
   if (*self.wvsHeader).compression eq 1 then self.print, 1, "Waveforms are compressed..." else self.print, 1, "Waveforms are not compressed..."
   self.print,1, "Header read and stored..."
   self.printsep
+  
+  ; Checking if the keyword NO_HEADER has been passed - if so, disable the printing
+  if self.Bitnoprint and '00000001'bb eq 1 then dum = self.restoreMode()
+  
   Return, 1
   
 endif else begin
   
   
 endelse
+
+
 
 End
 
@@ -683,6 +708,9 @@ End
 ;-
 Function pulsewaves::readVLR
 
+    ; Checking if the keyword NO_HEADER has been passed - if so, disable the printing
+    if self.Bitnoprint and '00000010'bb eq 2 then dum = self.setMode(2)
+  
     ; Defining a flag for the number of pulseTable
     plsTable = 0
   
@@ -841,8 +869,8 @@ Function pulsewaves::readVLR
               nEBytes     : 0US,$           ; Number of Extra Wave Bytes
               nSampling   : 0US,$           ; Number of Samplings
               sampleUnit  : 0. ,$           ; Sampling unit
-              scanIndex   : 0UL,$           ; Scanner Index
               compression : 0UL,$           ; Compression
+              scanIndex   : 0UL,$           ; Scanner Index
               description : bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE) $
             }
             
@@ -995,6 +1023,9 @@ endfor
 close,1
 self.Plspulsedes = ptr_new(vlrRecID)
 self.plsvlrarray = ptr_new(vlrArr)
+
+; Checking if the keyword NO_HEADER has been passed - if so, disable the printing
+if self.Bitnoprint and '00000010'bb eq 2 then dum = self.restoreMode()
 
 return, 1
 
@@ -1380,7 +1411,13 @@ End
 
 Function pulsewaves::readAVLR
 
-  ; WIP
+  ; Checking if the keyword NO_AVLR has been passed - if so, disable the printing
+  if self.Bitnoprint and '00000100'bb eq 4 then dum = self.setMode(2)
+  
+    ; WIP
+  
+  ; restoring previous console mode
+  if self.Bitnoprint and '00000100'bb eq 4 then dum = self.restoreMode()
   
 End
 

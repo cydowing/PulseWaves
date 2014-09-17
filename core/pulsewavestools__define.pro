@@ -30,7 +30,7 @@ void = {pulsewavestools,$
   plsDir        : ptr_new(),$         ; Pointer to a vectorarrayclass that holds the direction of the pulses
   plsRays       : ptr_new(),$         ; Pointer to a rayarrayclass that will holds the ray direction normilized
   plsTrajectory : ptr_new(),$         ; Pointer to an array (n,3) representing the trajectory of the optical center
-  inherits pulsewaves $
+  inherits pulsewaves $               ; Inherits from the pulsewaves to access pulsewaves file
        }
 
 End
@@ -39,7 +39,7 @@ End
 Function pulsewavestools::init, INPUTFILE = FILE, $
     _EXTRA = CONSOLE_OPTIONS
     
-dum = self->pulsewaves::init(_extra = console_options)
+dum = self->pulsewaves::init(INPUTFILE = FILE, _extra = console_options)
 ;self.pPulseWaves = pPulsewaves
 self.plsAnchors = ptr_new(!NULL)
 self.plsTargets = ptr_new(!NULL)
@@ -90,11 +90,11 @@ End
 
 ; This function will computes the anchors points contains in the PLS file
 ; A pointer to the pulsewaves object need to be passed
-Function pulsewavestools::computeAnchorPoints, pPulsewaves
+Function pulsewavestools::computeAnchorPoints
 
-  scale = (*pPulsewaves).getHeaderProperty(/XYZSCALE)
-  offset = (*pPulsewaves).getHeaderProperty(/XYZOFFSET)
-  pulses = (*pPulsewaves).getPulses()
+  scale = self.getHeaderProperty(/XYZSCALE)
+  offset = self.getHeaderProperty(/XYZOFFSET)
+  pulses = self.getPulses()
   
   self.plsAnchors = ptr_new( pointarrayclass($
     [ (pulses.anchorX * scale.x) + offset.x ],$
@@ -113,11 +113,11 @@ End
 
 ; This function will computes the anchors points contains in the PLS file
 ; A pointer to the pulsewaves object need to be passed
-Function pulsewavestools::computeTargetPoints, pPulsewaves
+Function pulsewavestools::computeTargetPoints
 
-  scale = (*pPulsewaves).getHeaderProperty(/XYZSCALE)
-  offset = (*pPulsewaves).getHeaderProperty(/XYZOFFSET)
-  pulses = (*pPulsewaves).getPulses()
+  scale = self.getHeaderProperty(/XYZSCALE)
+  offset = self.getHeaderProperty(/XYZOFFSET)
+  pulses = self.getPulses()
 
   self.Plstargets = Ptr_new( pointarrayclass($
     [ (pulses.targetX * scale.X) + offset.X ],$
@@ -133,7 +133,7 @@ End
 
 ; This function will computes the anchors points contains in the PLS file
 ; A pointer to the pulsewaves object need to be passed
-Function pulsewavestools::computeVectors, pPulsewaves, UNIT = UNIT
+Function pulsewavestools::computeVectors, UNIT = UNIT
 
   pulseDir = (*self.Plsanchors).makeVectorArrayFromPointArray((*self.Plstargets))
   
@@ -155,19 +155,20 @@ End
 
 ; This function will computes the pulses contains in the PLS file
 ; A pointer to the pulsewaves object need to be passed
-Function pulsewavestools::computePulses, pPulsewaves, UNIT = UNIT
+Function pulsewavestools::computePulses, UNIT = UNIT
 
-  if self.plsAnchors eq !NULL then origin = self.computeAnchorPoints(pPulsewaves)
-  if self.plsTargets eq !NULL then target = self.computeTargetPoints(pPulsewaves)
+  if *(self.plsAnchors) eq !NULL then origin = self.computeAnchorPoints()
+  if *(self.plsTargets) eq !NULL then target = self.computeTargetPoints()
   
   print, ((*self.Plsanchors).xyz())[0:5,*]  
   print, ((*self.Plstargets).xyz())[0:5,*]  
   
-  if keyword_set(unit) then direct = self.computeVectors(pPulsewaves, /UNIT) else $
-    direct = self.computeVectors(pPulsewaves)
+  if keyword_set(unit) then direct = self.computeVectors(/UNIT) else $
+    direct = self.computeVectors()
     
 ;  dumRay = plsrayarrayclass(origin, direct)
   self.plsRays = ptr_new(plsrayarrayclass(*self.PlsAnchors, *self.Plsdir))
+  
   
   Return, *self.Plsrays
 
@@ -175,7 +176,7 @@ End
 
 
 
-Function pulsewavestools::getReturnSampleCoordinates, pPulsewaves, $
+Function pulsewavestools::getReturnSampleCoordinates, $
             FIRST = FIRST, $
             LAST = LAST, $
             ALL = ALL
