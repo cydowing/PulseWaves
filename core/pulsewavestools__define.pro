@@ -29,15 +29,18 @@ void = {pulsewavestools,$
   plsTargets    : ptr_new(),$         ; Pointer to a pointarrayclass that holds the target points coordinates
   plsDir        : ptr_new(),$         ; Pointer to a vectorarrayclass that holds the direction of the pulses
   plsRays       : ptr_new(),$         ; Pointer to a rayarrayclass that will holds the ray direction normilized
-  plsTrajectory : ptr_new() $         ; Pointer to an array (n,3) representing the trajectory of the optical center
+  plsTrajectory : ptr_new(),$         ; Pointer to an array (n,3) representing the trajectory of the optical center
+  inherits pulsewaves $
        }
 
 End
 
 
-Function pulsewavestools::init, pPulsewaves
-
-self.pPulseWaves = pPulsewaves
+Function pulsewavestools::init, INPUTFILE = FILE, $
+    _EXTRA = CONSOLE_OPTIONS
+    
+dum = self->pulsewaves::init(_extra = console_options)
+;self.pPulseWaves = pPulsewaves
 self.plsAnchors = ptr_new(!NULL)
 self.plsTargets = ptr_new(!NULL)
 self.plsDir = ptr_new(!NULL)

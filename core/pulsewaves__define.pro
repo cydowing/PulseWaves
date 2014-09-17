@@ -97,10 +97,10 @@ Function pulsewaves::init, INPUTFILE = FILE, $
 
   ; It the TOOLS keyword is set, then call pulsewavestools superclass Initialization method.
   ; Not sure this will be relevant in the near future
-  if Keyword_set(carbomap_tools) then begin
-      self.print, 1, "Linking pulsewavestools to pulsewaves enabling Carbomap add-on processing capability..."
-      dum = self->pulsewavestools::init(Ptr_new(self))
-  endif
+;  if Keyword_set(carbomap_tools) then begin
+;      self.print, 1, "Linking pulsewavestools to pulsewaves enabling Carbomap add-on processing capability..."
+;      dum = self->pulsewavestools::init(Ptr_new(self))
+;  endif
 
   ; This keyword is dedicate to enable common C/C++ tools develop by the community - need more developments
   if Keyword_set(external_tools) then begin
@@ -1156,6 +1156,10 @@ Function pulsewaves::readWaves
   ; start time
   T = SYSTIME(1)
   
+  ; Defining a flag and a color array for the plotting
+  colorarr = ["r","b","g","y"]
+  plotFlag = 0B
+  
   openr, getDataLun, self.wvsFilePath, /get_lun, /swap_if_big_endian
   ; Retriving the wave data packet
   plsStructure = self.initWaveRecord()
@@ -1188,7 +1192,7 @@ Function pulsewaves::readWaves
             movingTo = byteOffset + extraBytes
             ; Read the waveform block
             self.print, 1, "Waves block #" + Strcompress(string(*self.Plspulseindsel),/REMOVE_ALL) + " is located at byte " + Strcompress(string(movingTo),/REMOVE_ALL)
-            
+            self.printsep
             Point_lun, getDataLun, byteOffset + extraBytes       
             
             ; Getting information for all the Sampling Records
@@ -1200,9 +1204,13 @@ Function pulsewaves::readWaves
             plsBtNSam = ((*vlr[1]).(1)).(9)
             pulseNSeg = ((*vlr[1]).(1)).(10)
             pulseNSam = ((*vlr[1]).(1)).(11)
-                 
+            
+            nSampling = N_elements(pulseType)
+            self.printsep
+            self.print, 1, "The wave block has " + Strcompress(string(nSampling),/REMOVE_ALL) + " sampling..."
+                
             ; Reading for each pulse the information            
-            for p = 0, N_elements(pulseType)-1 do begin
+            for p = 0, nSampling-1 do begin
 
               self.printsep
               
@@ -1215,7 +1223,7 @@ Function pulsewaves::readWaves
                 
                 self.print, 1, "Pulse has a fixed segmentation..."
                 pulseNumberSegment = pulseNSeg[p]
-                self.print, 1, Strcompress("Number of segment(s) in Sampling #" + string(p+1) + " : " + string(pulseNumberSegment) + "...")
+                self.print, 1, "Number of segment(s) in Sampling #" + Strcompress(string(p+1),/REMOVE_ALL) + " : " + Strcompress(string(pulseNumberSegment),/REMOVE_ALL) + "..."
                 
               endif else begin
                 
@@ -1223,7 +1231,7 @@ Function pulsewaves::readWaves
                 self.print, 1, 'Reading information from file...'
                 pulseNumberSegment = self.fieldDataCreator(plsBtNSeg[p])
                 readu, getDataLun, pulseNumberSegment
-                self.print, 1, Strcompress("Number of segment(s) in Sampling #" + string(p+1) + " : " + string(pulseNumberSegment) + "...")
+                self.print, 1, Strcompress("Number of segment(s) in Sampling #" + string(p+1) + ": " + string(pulseNumberSegment) + "...")
                 
               endelse
               
@@ -1248,12 +1256,12 @@ Function pulsewaves::readWaves
                   durationFromAnchor = self.fieldDataCreator(plsBtDura[p])
                   Readu, getDataLun, durationFromAnchor
                   self.print, 1, Strcompress("Duration from Anchor: " + string(durationFromAnchor) + "...")
-                  self.print, 1, Strcompress("Scale offset: " + String(pulseScal[p]) + " " + String(pulseOffs[p]) )
+                  self.print, 1, Strcompress("Scale & offset: " + String(pulseScal[p]) + "  " + String(pulseOffs[p]) )
                   self.print, 1, Strcompress("Final duration from anchor: " + String(durationFromAnchor *pulseScal[p] +pulseOffs[p]) )
                   
                 endelse
                 
-                for s = 0, pulseNumberSegment-1 do begin
+;                for s = 0, pulseNumberSegment-1 do begin
                   
                   ; Number of Samples in Segment k from Sampling m:
                   ; Exist if “bits for Number of Samples” in Sampling Record is non-zero => Number of Samples in the next Segment.
@@ -1271,17 +1279,28 @@ Function pulsewaves::readWaves
                     self.print, 1, 'Reading information from file...'
                     pulseNumberSample = self.fieldDataCreator(plsBtNSam[p])
                     Readu, getDataLun, pulseNumberSample
-                    self.print, 1, "Number of samples in Segment #" + Strcompress(String(p),/REMOVE_ALL) + " of Sampling #" + Strcompress(String(s),/REMOVE_ALL) + ": " + Strcompress(string(pulseNumberSample),/REMOVE_ALL)
+                    self.print, 1, "Number of samples in Segment #" + Strcompress(String(seg+1),/REMOVE_ALL) + " of Sampling #" + Strcompress(String(p+1),/REMOVE_ALL) + ": " + Strcompress(string(pulseNumberSample),/REMOVE_ALL)
                     
                   endelse
                   
                   ; Reading the waves
                   waves = bytarr(pulseNumberSample)
-                  self.print, 1, "Reading Waves of Segment #" + Strcompress(String(p),/REMOVE_ALL) + " of Sampling #" + Strcompress(String(s),/REMOVE_ALL)
+                  self.print, 1, "Reading Waves of Segment #" + Strcompress(String(seg+1),/REMOVE_ALL) + " of Sampling #" + Strcompress(String(p+1),/REMOVE_ALL)
                   Readu, getDataLun, waves
-                  if n_elements(waves) gt 1 then plot, waves
                   
-                endfor
+                  
+                  if p eq 0 then begin
+;                    if n_elements(waves) gt 1 and plotFlag eq 0 then begin
+                      plt = plot(waves, color=colorarr[plotFlag])
+                      plotFlag += 1B
+;                    endif
+                  endif else begin
+                    pgt = plot(waves, color=colorarr[plotFlag], /OVERPLOT)
+                    plotFlag += 1B
+                  endelse
+                  
+                  
+;                endfor
                 
                 self.printsep
                 
