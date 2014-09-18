@@ -41,11 +41,10 @@ void = { pulsewaves, $
   wvsHeader     : ptr_new(),$         ; Pointer to the header of the WVS file
   wvsWaveRec    : ptr_new(),$         ; Pointer to the records of the WVS file corresponding to the records in plsPulseRec
   wvsWaveInd    : ptr_new(),$         ; Pointer to the index corresponding to the records in plsPulseRec
+  plotColor     : strarr(4),$         ; Pointer to a string array containing the color index for the plot of the waves
   bitNoPrint    : 0B,$                ; Byte that specify if the print out of the HEADER/VLR/AVLR is enable or disable
-  colarray      : Ptr_new(),$         ; Pointer to a string array containing the color index for the plot of the waves
   plotFlag      : 0B,$                ; A bit to count how many segment have been  plot
   inherits consoleclass $             ; Inherits from the consoleclass for formatted console and log ouptut
-;  inherits pulsewavestools $          ; Inherits from the pulsewavestools to access full-waveform processing tools
 }
 
 End
@@ -237,7 +236,8 @@ Function pulsewaves::initDataConstant
   self.plsStrtConst = ptr_new(void)
   
   ; Defining a flag and a color array for the plotting
-  self.colorarr = ptr_new(["r","b","g","y"])
+  colorArr = ["r","c","g","y"]
+  self.plotColor = colorArr
   self.plotFlag = 0B
   
   
@@ -1397,13 +1397,13 @@ Function pulsewaves::plotWaves, p, lut, waves
 if p eq 0 then begin
   ;if n_elements(waves) gt 1 and plotFlag eq 0 then begin
   ;plt = plot((((*lut[2]).(1)).(1))[waves], color=colarray[plotFlag])
-  plt = plot(waves, color=(self.colarray)[self.plotFlag], YRANGE = [0., Max((((*lut[2]).(1)).(1))[waves])])
-  plotFlag += 1B
-  ;                    endif
+;  plt = plot(waves, color=(self.plotColor)[self.plotFlag], YRANGE = [0., Max(waves)])
+  self.plotFlag += 1B
+  ;endif
 endif else begin
-  ;                    pgt = plot((((*lut[2]).(1)).(1))[waves], color=colarray[plotFlag], /OVERPLOT)
-  plt = plot((((*lut[1]).(1)).(1))[waves], color=(*self.colarray)[self.plotFlag], /OVERPLOT)
-  plotFlag += 1B
+  ;                    pgt = plot((((*lut[2]).(1)).(1))[waves], color=(self.plotColor)[plotFlag], /OVERPLOT)
+  plt = plot((((*lut[1]).(1)).(1))[waves], color=(self.plotColor)[self.plotFlag], /OVERPLOT)
+  self.plotFlag += 1B
 endelse
   
 return, 1
