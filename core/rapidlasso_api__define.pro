@@ -1,7 +1,7 @@
 Pro rapidlasso_api__define
 
 void = {rapidlasso_api,$
-  dum : 0 $
+  pPulsewaves : ptr_new() $
   }
   
 End
@@ -9,6 +9,8 @@ End
 
 Function rapidlasso_api::init
 
+plsObj = pulsewaves(INPUTFILE = INPUTFILE)
+self.pPulsewaves = ptr_new(plsObj)
 return, 1
 
 End

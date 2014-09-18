@@ -42,6 +42,8 @@ void = { pulsewaves, $
   wvsWaveRec    : ptr_new(),$         ; Pointer to the records of the WVS file corresponding to the records in plsPulseRec
   wvsWaveInd    : ptr_new(),$         ; Pointer to the index corresponding to the records in plsPulseRec
   bitNoPrint    : 0B,$                ; Byte that specify if the print out of the HEADER/VLR/AVLR is enable or disable
+  colarray      : Ptr_new(),$         ; Pointer to a string array containing the color index for the plot of the waves
+  plotFlag      : 0B,$                ; A bit to count how many segment have been  plot
   inherits consoleclass $             ; Inherits from the consoleclass for formatted console and log ouptut
 ;  inherits pulsewavestools $          ; Inherits from the pulsewavestools to access full-waveform processing tools
 }
@@ -233,6 +235,12 @@ Function pulsewaves::initDataConstant
   }
   
   self.plsStrtConst = ptr_new(void)
+  
+  ; Defining a flag and a color array for the plotting
+  self.colorarr = ptr_new(["r","b","g","y"])
+  self.plotFlag = 0B
+  
+  
   return, 1
   
 End
@@ -1187,9 +1195,7 @@ Function pulsewaves::readWaves
   ; start time
   T = SYSTIME(1)
   
-  ; Defining a flag and a color array for the plotting
-  colorarr = ["r","b","g","y"]
-  plotFlag = 0B
+
   
   openr, getDataLun, self.wvsFilePath, /get_lun, /swap_if_big_endian
   ; Retriving the wave data packet
@@ -1212,8 +1218,7 @@ Function pulsewaves::readWaves
             descriptorVal = (pDes AND '11111111'bb) + 200000
             
             ; Retreiving the corresponding VLR
-            vlr = self.getVLRecords(RECORDID = descriptorVal)
-            
+            vlr = self.getVLRecords(RECORDID = descriptorVal)    
             
             ; Because the pulse can be fragmented it might not be possible to read the pulse as a block
             ; Checking pulse descriptor for information
@@ -1225,7 +1230,7 @@ Function pulsewaves::readWaves
             self.print, 1, "Waves block #" + Strcompress(string(*self.Plspulseindsel),/REMOVE_ALL) + " is located at byte " + Strcompress(string(movingTo),/REMOVE_ALL)
             self.printsep
             Point_lun, getDataLun, byteOffset + extraBytes       
-            
+
             ; Getting information for all the Sampling Records
             pulseType = ((*vlr[1]).(1)).(2)
             plsBtDura = ((*vlr[1]).(1)).(5)
@@ -1235,9 +1240,10 @@ Function pulsewaves::readWaves
             plsBtNSam = ((*vlr[1]).(1)).(9)
             pulseNSeg = ((*vlr[1]).(1)).(10)
             pulseNSam = ((*vlr[1]).(1)).(11)
-            
+            pulseLUTN = ((*vlr[1]).(1)).(13)
             nSampling = N_elements(pulseType)
             self.printsep
+            self.print, 1, "The wave block has Pulse Descriptor #" + Strcompress(string(descriptorVal),/REMOVE_ALL)
             self.print, 1, "The wave block has " + Strcompress(string(nSampling),/REMOVE_ALL) + " sampling..."
                 
             ; Reading for each pulse the information            
@@ -1317,19 +1323,20 @@ Function pulsewaves::readWaves
                   ; Reading the waves
                   waves = bytarr(pulseNumberSample)
                   self.print, 1, "Reading Waves of Segment #" + Strcompress(String(seg+1),/REMOVE_ALL) + " of Sampling #" + Strcompress(String(p+1),/REMOVE_ALL)
+                  
+                  ; Getting the lookup table in VLR
+                  LUT = self.getVLRecords(RECORDI = (pulseLUTN[p] + 300000))
+                  ; To print the table - n being the table
+                  ; ((*lut[n]).(1)).(1)
+                  ;            IDL> String((((*lut[2]).(1)).(0)).(7))
+                  ;            amplitude conversion table for low channel
+                  ;            IDL> String((((*lut[3]).(1)).(0)).(7))
+                  ;            amplitude conversion table for high channel
+                  
+                  
                   Readu, getDataLun, waves
-                  
-                  
-                  if p eq 0 then begin
-;                    if n_elements(waves) gt 1 and plotFlag eq 0 then begin
-                      plt = plot(waves, color=colorarr[plotFlag])
-                      plotFlag += 1B
-;                    endif
-                  endif else begin
-                    pgt = plot(waves, color=colorarr[plotFlag], /OVERPLOT)
-                    plotFlag += 1B
-                  endelse
-                  
+                  dum = self.plotWaves(p, lut, waves)
+
                   
 ;                endfor
                 
@@ -1381,6 +1388,26 @@ Function pulsewaves::readWaves
   
   Return, 1
   
+End
+
+
+
+Function pulsewaves::plotWaves, p, lut, waves
+
+if p eq 0 then begin
+  ;if n_elements(waves) gt 1 and plotFlag eq 0 then begin
+  ;plt = plot((((*lut[2]).(1)).(1))[waves], color=colarray[plotFlag])
+  plt = plot(waves, color=(self.colarray)[self.plotFlag], YRANGE = [0., Max((((*lut[2]).(1)).(1))[waves])])
+  plotFlag += 1B
+  ;                    endif
+endif else begin
+  ;                    pgt = plot((((*lut[2]).(1)).(1))[waves], color=colarray[plotFlag], /OVERPLOT)
+  plt = plot((((*lut[1]).(1)).(1))[waves], color=(*self.colarray)[self.plotFlag], /OVERPLOT)
+  plotFlag += 1B
+endelse
+  
+return, 1
+
 End
 
 
@@ -1665,10 +1692,29 @@ Function pulsewaves::getVlRecords, INDEX = INDEX, RECORDID = RECORDID
   
   if keyword_set(RECORDID) then begin
     
-    id = where( (*self.Plspulsedes) eq RECORDID, /NULL)
-    if id ne !NULL then begin
-      return, [(*self.plsvlrarray)[id*2], (*self.plsvlrarray)[(id*2)+1]]
-    endif
+    nRecordID = n_elements(RECORDID)
+    case 1 of
+      
+      nRecordID eq 1: begin
+        
+          id = Where( (*self.Plspulsedes) eq RECORDID, /NULL)
+          if id ne !NULL then begin
+            Return, [(*self.Plsvlrarray)[id*2], (*self.Plsvlrarray)[(id*2)+1]]
+          endif
+        
+        End
+        
+      nRecordID eq 2: begin
+        
+        id = Where( (*self.Plspulsedes) ge RECORDID[0] and (*self.Plspulsedes) le RECORDID[1], /NULL)
+        if id ne !NULL then begin
+          Return, [(*self.Plsvlrarray)[id*2], (*self.Plsvlrarray)[(id*2)+1]]
+        endif        
+        
+        End
+    endcase
+    
+    
     
   endif
   
