@@ -236,9 +236,9 @@ Function pulsewaves::initDataConstant
   self.plsStrtConst = ptr_new(void)
   
   ; Defining a flag and a color array for the plotting
-  colorArr = ["r","c","g","y"]
-  self.plotColor = colorArr
-  self.plotFlag = 0B
+;  colorArr = ["r","c","g","y"]
+;  self.plotColor = colorArr
+;  self.plotFlag = 0B
   
   
   return, 1
@@ -1195,7 +1195,9 @@ Function pulsewaves::readWaves
   ; start time
   T = SYSTIME(1)
   
-
+  ; Some constant for the plotting
+  plotColor = ["r","b","g","y"]
+  plotFlag = 0B
   
   openr, getDataLun, self.wvsFilePath, /get_lun, /swap_if_big_endian
   ; Retriving the wave data packet
@@ -1335,7 +1337,20 @@ Function pulsewaves::readWaves
                   
                   
                   Readu, getDataLun, waves
-                  dum = self.plotWaves(p, lut, waves)
+                  
+                  if p eq 0 then begin
+;                    if n_elements(waves) gt 1 then begin
+                    ;plt = plot((((*lut[2]).(1)).(1))[waves], color=self.colarray[self.plotFlag])
+                      plt = plot(waves, color=(plotColor)[plotFlag])
+                    plotFlag += 1B
+;                    endif
+                  endif else begin
+                    ;                    pgt = plot((((*lut[2]).(1)).(1))[waves], color=(self.plotColor)[plotFlag], /OVERPLOT)
+                    plt = plot((((*lut[1]).(1)).(1))[waves], color=(plotColor)[plotFlag], /OVERPLOT)
+                    plotFlag += 1B
+                  endelse
+                  
+                  ;dum = self.plotWaves(p, lut, waves)
 
                   
 ;                endfor
@@ -1394,17 +1409,17 @@ End
 
 Function pulsewaves::plotWaves, p, lut, waves
 
-if p eq 0 then begin
-  ;if n_elements(waves) gt 1 and plotFlag eq 0 then begin
-  ;plt = plot((((*lut[2]).(1)).(1))[waves], color=colarray[plotFlag])
-;  plt = plot(waves, color=(self.plotColor)[self.plotFlag], YRANGE = [0., Max(waves)])
-  self.plotFlag += 1B
-  ;endif
-endif else begin
-  ;                    pgt = plot((((*lut[2]).(1)).(1))[waves], color=(self.plotColor)[plotFlag], /OVERPLOT)
-  plt = plot((((*lut[1]).(1)).(1))[waves], color=(self.plotColor)[self.plotFlag], /OVERPLOT)
-  self.plotFlag += 1B
-endelse
+;if p eq 0 then begin
+;  ;if n_elements(waves) gt 1 and plotFlag eq 0 then begin
+;  ;plt = plot((((*lut[2]).(1)).(1))[waves], color=colarray[plotFlag])
+;;  plt = plot(waves, color=(self.plotColor)[self.plotFlag], YRANGE = [0., Max(waves)])
+;  self.plotFlag += 1B
+;  ;endif
+;endif else begin
+;  ;                    pgt = plot((((*lut[2]).(1)).(1))[waves], color=(self.plotColor)[plotFlag], /OVERPLOT)
+;  plt = plot((((*lut[1]).(1)).(1))[waves], color=(self.plotColor)[self.plotFlag], /OVERPLOT)
+;  self.plotFlag += 1B
+;endelse
   
 return, 1
 
