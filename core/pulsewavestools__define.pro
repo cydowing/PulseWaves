@@ -190,3 +190,32 @@ End
 
 
 
+Function pulsewavestools::readWaves
+
+
+
+End
+
+
+
+Function pulsewavestools::plotWaves
+
+  if p eq 0 then begin
+    ;                    if n_elements(waves) gt 1 then begin
+    ;plt = plot((((*lut[2]).(1)).(1))[waves], color=self.colarray[self.plotFlag])
+    plt = plot(waves, color=(plotColor)[plotFlag])
+    plotFlag += 1B
+    ;                    endif
+  endif else begin
+
+    newWave = (((*lut[1]).(1)).(1))[waves]
+    plt = plot(where(newWave ne -2.000000e+037), newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag], /OVERPLOT)
+
+    plotFlag += 1B
+
+  endelse
+  
+End
+
+
+
