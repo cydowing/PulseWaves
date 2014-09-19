@@ -44,7 +44,7 @@ void = { pulsewaves, $
   wvsHeader     : ptr_new(),$         ; Pointer to the header of the WVS file
   wvsWaveRec    : ptr_new(),$         ; Pointer to the records of the WVS file corresponding to the records in plsPulseRec
   wvsWaveInd    : ptr_new(),$         ; Pointer to the index corresponding to the records in plsPulseRec
-  plotColor     : strarr(4),$         ; Pointer to a string array containing the color index for the plot of the waves
+  plotColor     : strarr(4),$         ; String array containing the color index for the plot of the waves
   bitNoPrint    : 0B,$                ; Byte that specify if the print out of the HEADER/VLR/AVLR is enable or disable
   plotFlag      : 0B,$                ; A bit to count how many segment have been  plot
   inherits consoleclass $             ; Inherits from the consoleclass for formatted console and log ouptut
@@ -99,7 +99,7 @@ Function pulsewaves::init, INPUTFILE = FILE, $
   
   ; Getting OS information for cross-plateform compatibility
   os = os_define()
-  self.sysSep = os.pathSep
+  self.sysSep = os.Sep
   self.pathRoot = File_dirname(Routine_filepath('pulsewaves__define', /either))
   self.osRoot = os.osRoot
   
