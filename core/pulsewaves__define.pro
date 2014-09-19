@@ -30,6 +30,9 @@ Pro pulsewaves__define
 void = { pulsewaves, $
   plsFilePath   : "",$                ; Fully qualified path to the PLS file
   wvsFilePath   : "",$                ; Fully qualified path to the WVS file
+  sysSep        : "",$                ; OS path separator
+  pathRoot      : "",$                ; String the represents the object root path.
+  osRoot        : "",$                ; String the represents the OS root path.
   plsStrtConst  : ptr_new(),$         ; Pointer to the constant that define some structure fields
   plsHeader     : ptr_new(),$         ; Pointer to the PLS Header data
   plsVlrArray   : ptr_new(),$         ; Pointer to the Variable Length Records (in reading order - Header/Key)
@@ -94,6 +97,14 @@ Function pulsewaves::init, INPUTFILE = FILE, $
 
   Compile_opt idl2
   
+  ; Getting OS information for cross-plateform compatibility
+  os = os_define()
+  self.sysSep = os.pathSep
+  self.pathRoot = File_dirname(Routine_filepath('pulsewaves__define', /either))
+  self.osRoot = os.osRoot
+  
+  ; If not inputfile is provided, then open a dialog pickfile
+  if keyword_set(INPUTFILE) ne 1 then file = DIALOG_PICKFILE(/READ, FILTER = '*.pls')
   ; Closing any open previous file
   close, 1
   
