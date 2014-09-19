@@ -93,6 +93,7 @@ Function pulsewaves::init, INPUTFILE = FILE, $
 		NO_HEADER = NO_HEADER, $
 		NO_VLR = NO_VLR,$
 		NO_AVLR = NO_AVLR,$
+		NO_GUI = NO_GUI,$
 		_EXTRA = CONSOLE_OPTIONS
 
   Compile_opt idl2
@@ -103,8 +104,11 @@ Function pulsewaves::init, INPUTFILE = FILE, $
   self.pathRoot = File_dirname(Routine_filepath('pulsewaves__define', /either))
   self.osRoot = os.osRoot
   
-  ; If not inputfile is provided, then open a dialog pickfile
-  if keyword_set(INPUTFILE) ne 1 then file = DIALOG_PICKFILE(/READ, FILTER = '*.pls')
+  
+  self.plotColor = ["r","b","g","y"]
+  self.plotFlag = 0B
+  
+  
   ; Closing any open previous file
   close, 1
   
@@ -146,18 +150,26 @@ Function pulsewaves::init, INPUTFILE = FILE, $
   ;self.plspulserec = ptr_new(self.initpulserecord())
   
   ;Checking that the provided file exist
+  if keyword_set(INPUTFILE) eq 0 then file = ''
   exist = File_test(file)
   if exist eq 1 then begin
     self.plsFilePath = file
     self.wvsFilePath = self.getWaveFileName(self.plsFilePath)
   endif else begin
     while exist ne 1 do begin
-      self.print, 3, "File doesn't seems to exist..."
-      self.print, 3, "Please re-enter a file path string"
-      newPath = ""
-      read, newPath
-      print, newPath
-      exist = File_test(newPath)
+      
+      if keyword_set(NO_GUI) then begin
+        self.print, 3, "No INPUT_FILE provided or the file doesn't exist..."
+        self.print, 3, "Please re-enter a file path string"
+        newPath = ""
+        read, newPath
+        print, newPath
+        exist = File_test(newPath)
+      endif else begin
+        ; If not inputfile is provided, then open a dialog pickfile
+        newPath = DIALOG_PICKFILE(/READ, FILTER = '*.pls')
+        exist = File_test(newPath)
+      endelse
     endwhile
     self.plsFilePath = newPath
     self.wvsFilePath = self.getWaveFileName(self.plsFilePath)
@@ -1063,16 +1075,19 @@ End
 
 
 ;+
-; This function returns the number of flightlines of a specific survey day
+; This function will read the pulse and put the result into the object data member
+; Filtering options are available to filter the pulses. Note that for the moment the
+; filtering is based on the Anchor point of the pulses, meaning that the selected pulses
+; might end up outside the BOUNDINGBOX.
 ;
 ; :Categories:
-;   GENERAL, GET
+;   GENERAL
 ;
 ; :Returns:
-;   An integer equals to the number of flightlines.
+;   An bit value to specify that everything went well (1) or not (0).
 ;
 ; :Uses:
-;   Result=Obj->getNumberOfFlightline(day=surveyDay)
+;   Result=Obj->readPulses()
 ;
 ; :Examples:
 ;
@@ -1080,39 +1095,42 @@ End
 ;     geoBox = [488401.968647,487901.968647,235421.265389,234921.265386]
 ;
 ;     Initialize the object
-;     lasObj = obj_new('laslib')
-;
-;     Load the 5th flightline from December 5th 2003 data
-;     lasObj->loadData, day='338', flightline=5, /QUIET
+;     plsObj = obj_new('pulsewaves')
 ;
 ;     Select points that lies inside the bounding box.
-;     Result = lasObj->getData(boundingBox=geoBox)
+;     Result = plsObj->readPulses(BOUNDINGBOX=geoBox)
 ;
 ; :Keywords:
 ;   boundingBox : in, optional, type=dblarr(6)
 ;     Geographical limit to filter the data. It can be Easting and/or Northing and/or Elevation values.
 ;     The array need to be of one of the following format:
-;       [xMax, xMin, yMax, yMin, zMax, zMin] or,
-;       [zMax, zMin] or,
-;       [zMax] or,
-;       [zMin]
-;   pointNumber : in, optional, type=long
-;     PointNumber can be either one point index (long) and range of continuous points [pointMinIndex, pointMaxIndex],
+;       [xMax, xMin, yMax, yMin, zMax, zMin] or, [xMax, xMin, yMax, yMin]
+;       [xMax, xMin], /XBOUND or [yMax, yMin], /YBOUND or [zMax, zMin], /ZBOUND
+;       [zMax], /MAX, or [zMin], /MIN
+;       
+;   INDEX : in, optional, type=long
+;     INDEX can be either one point index (long) and range of continuous points [pointMinIndex, pointMaxIndex],
 ;     or a collection of discrete points lonarr(n).
-;   max : in, optional, type=boolean
+;   XBOUND, YBOUND or ZBOUND: in, optional, type=boolean
+;     Set the axe to use (X,Y or Z) for the filtering
+;   MAX : in, optional, type=boolean
 ;     Set the boundingBox value as the maximum (cutoff) elevation value.
 ;     This is a required Keyword if the boundingBox has only one value.
-;   min :
+;   MIN :
 ;     Set the boundingBox value as the minimum (cutoff) elevation value.
 ;     This is a required Keyword if the boundingBox has only one value.
 ;   all : in, optional, type=boolean
 ;     If present, will return all the points of the PLS file.
-;   _ref_extra : in, optional, type=`strarr`
-;     A `strarr[n]` that describ the n field(s) that need to be return.
-;     If n=0 then all the fields are return.
+;   current : in, NOT IN USE NOW
+;   no_save : in, optional, type=boolean
+;     if set, the pulseBlock is not store in the object data member, but it's return to the caller
 ;
 ;-
-Function pulsewaves::readPulses, INDEX = INDEX, CURRENT = CURRENT, ALL=ALL
+Function pulsewaves::readPulses, INDEX = INDEX, CURRENT = CURRENT, ALL=ALL, $
+            BOUNDINGBOX = BOUNDINGBOX, $
+            XBOUND = XBOUND, YBOUND = yBOUND, ZBOUND = ZBOUND, $
+            MAX = MAX, MIN = MIN, $
+            NO_SAVE = NO_SAVE
 
 ; start time
 T = SYSTIME(1)
@@ -1139,66 +1157,114 @@ if keyword_set(ALL) then begin
   
 endif
 
-free_lun, getDataLun
-; Updating data members
-self.print,1,"Linking pulse data to object's data member..."
-self.plspulserec = ptr_new(pulseData)
-self.plspulseInd = ptr_new(index)
+; If the keyword BOUNDING box is pass
+if keyword_set(BOUNDINGBOX) then begin
+  
+  ; Checking is the data has been loaded already
+  print,(*self.plsPulseRec)
+  if *self.plsPulseRec eq !NULL then pulseBlock = self.readPulses(/ALL, /NO_SAVE)
+  
+  ; Determining the size of the boundingbox
+  nbbox = n_elements(BOUNDINGBOX)
+  
+  case 1 of
+    nbbox eq 6: begin
+      
+                end
+                
+    nbbox eq 4: begin
+      
+      
+                end
+                
+    nbbox eq 2: begin
+                  
+                  case 1 of
+                  ; If XBOUND is set => keeping all points between these two values
+                  keyword_set(XBOUND): begin
+                    
+                                       end
+                  ; If YBOUND is set => keeping all points between these two values                      
+                  keyword_set(YBOUND): begin
+                      
+                            
+                                       end
+                   ; If ZBOUND is set => keeping all points between these two values
+                   keyword_set(ZBOUND): begin
+  
+  
+                   end
+                  ; If no associated keyword is set, then the altitude is considered and
+                  ; all the points lying within the two altitude are kept                      
+                  ELSE: begin
+                  
+                  
+                         end
+                         
+                  endcase
 
-Return, 1
+                end
+                
+                
+    nbbox eq 1: begin
+
+                  case 1 of
+                    ; If MAX is set => keeping all points under this cutoff value
+                    ; The cutoff value is inclusive (gt)
+                    keyword_set(MAX): begin
+            
+                    end
+                    ; If MIN is set => keeping all points above this cutoff value
+                    ; The cutoff value is inclusive (lt)
+                    keyword_set(MIN): begin
+            
+            
+                    end
+                    ELSE:
+                  Endcase
+      
+                end
+      
+    ELSE:
+      
+  endcase
+  
+  
+endif
+
+free_lun, getDataLun
+; Updating data members - if NO_SAVE keyword not set
+; If NO_SAVE is set, then the function will return the array of structure pulseData
+if keyword_set(NO_SAVE) ne 1 then begin
+  self.print,1,"Saving pulse data to object's data member..."
+  self.plspulserec = ptr_new(pulseData)
+  self.plspulseInd = ptr_new(index)
+  Return, 1
+endif else begin
+  self.print,1,"Returning pulse data to caller..."
+  Return, pulseData
+endelse
 
 End
 
 
 
 ;+
-; This function returns the number of flightlines of a specific survey day
+; This function the waves associated to the pulses read from the previous pulsewaves::readPulses().
+; The return waves are store in the object's data member. To retreive the waves, user needs
+; to call pulsewaves::getPulses()
 ;
 ; :Categories:
-;   GENERAL, GET
+;   GENERAL
 ;
 ; :Returns:
-;   An integer equals to the number of flightlines.
+;   An bit value to specify that everything went well (1) or not (0).
 ;
 ; :Uses:
-;   Result=Obj->getNumberOfFlightline(day=surveyDay)
+;   Result=Obj->readWaves()
 ;
-; :Examples:
-;
-;     Define the bounding coordinate for the selection
-;     geoBox = [488401.968647,487901.968647,235421.265389,234921.265386]
-;
-;     Initialize the object
-;     lasObj = obj_new('laslib')
-;
-;     Load the 5th flightline from December 5th 2003 data
-;     lasObj->loadData, day='338', flightline=5, /QUIET
-;
-;     Select points that lies inside the bounding box.
-;     Result = lasObj->getData(boundingBox=geoBox)
 ;
 ; :Keywords:
-;   boundingBox : in, optional, type=dblarr(6)
-;     Geographical limit to filter the data. It can be Easting and/or Northing and/or Elevation values.
-;     The array need to be of one of the following format:
-;       [xMax, xMin, yMax, yMin, zMax, zMin] or,
-;       [zMax, zMin] or,
-;       [zMax] or,
-;       [zMin]
-;   pointNumber : in, optional, type=long
-;     PointNumber can be either one point index (long) and range of continuous points [pointMinIndex, pointMaxIndex],
-;     or a collection of discrete points lonarr(n).
-;   max : in, optional, type=boolean
-;     Set the boundingBox value as the maximum (cutoff) elevation value.
-;     This is a required Keyword if the boundingBox has only one value.
-;   min :
-;     Set the boundingBox value as the minimum (cutoff) elevation value.
-;     This is a required Keyword if the boundingBox has only one value.
-;   all : in, optional, type=boolean
-;     If present, will return all the points of the PLS file.
-;   _ref_extra : in, optional, type=`strarr`
-;     A `strarr[n]` that describ the n field(s) that need to be return.
-;     If n=0 then all the fields are return.
 ;
 ;-
 Function pulsewaves::readWaves
@@ -1357,8 +1423,13 @@ Function pulsewaves::readWaves
 ;                    endif
                   endif else begin
                     ;                    pgt = plot((((*lut[2]).(1)).(1))[waves], color=(self.plotColor)[plotFlag], /OVERPLOT)
-                    plt = plot((((*lut[1]).(1)).(1))[waves], color=(plotColor)[plotFlag], /OVERPLOT)
+;                    plt = plot((((*lut[1]).(1)).(1))[waves], color=(plotColor)[plotFlag], /OVERPLOT)
+                    
+                    newWave = (((*lut[1]).(1)).(1))[waves]
+                    plt = plot(where(newWave ne -2.000000e+037), newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag], /OVERPLOT)
+                    
                     plotFlag += 1B
+                    
                   endelse
                   
                   ;dum = self.plotWaves(p, lut, waves)
