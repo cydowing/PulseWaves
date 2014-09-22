@@ -1130,6 +1130,7 @@ Function pulsewaves::readPulses, INDEX = INDEX, CURRENT = CURRENT, ALL=ALL, $
             BOUNDINGBOX = BOUNDINGBOX, $
             XBOUND = XBOUND, YBOUND = yBOUND, ZBOUND = ZBOUND, $
             MAX = MAX, MIN = MIN, $
+            OUTPUTID = OUTPUTID, $
             NO_SAVE = NO_SAVE
 
 ; start time
@@ -1161,18 +1162,38 @@ endif
 if keyword_set(BOUNDINGBOX) then begin
   
   ; Checking is the data has been loaded already
-  print,(*self.plsPulseRec)
-  if *self.plsPulseRec eq !NULL then pulseBlock = self.readPulses(/ALL, /NO_SAVE)
+ ; print,(*self.plsPulseRec)
+  pulseBlock = self.readPulses(/ALL, /NO_SAVE)
+  ;if self.plsPulseRec eq !NULL then pulseBlock = self.readPulses(/ALL, /NO_SAVE) else pulseBlock = *self.plsPulseRec
+  
+  x = ( pulseBlock.anchorX * (*self.plsheader).xscale ) + (*self.plsheader).xoffset 
+  y = ( pulseBlock.anchorY * (*self.plsheader).yscale ) + (*self.plsheader).yoffset 
+  z = ( pulseBlock.anchorZ * (*self.plsheader).zscale ) + (*self.plsheader).zoffset 
   
   ; Determining the size of the boundingbox
   nbbox = n_elements(BOUNDINGBOX)
   
   case 1 of
     nbbox eq 6: begin
-      
+                  
+                  self.print, 1,"Filtering data by coordinates and height..."
+                  index = Where((x le BOUNDINGBOX[0]) and (x ge BOUNDINGBOX[1]) and $
+                                (y le BOUNDINGBOX[2]) and (y ge BOUNDINGBOX[3]) and $
+                                (z le BOUNDINGBOX[4]) and (z ge BOUNDINGBOX[5]), $
+                                indexCount, /NULL)
+                  
+                  if index ne !NULL then pulseData = pulseBlock[index] else pulseData = !NULL
+                  
                 end
                 
     nbbox eq 4: begin
+      
+                  self.print, 1,"Filtering data by coordinates and height..."
+                  index = Where((x le BOUNDINGBOX[0]) and (x ge BOUNDINGBOX[1]) and $
+                                (y le BOUNDINGBOX[2]) and (y ge BOUNDINGBOX[3]), $
+                                indexCount, /NULL)
+            
+                  if index ne !NULL then pulseData = pulseBlock[index] else pulseData = !NULL
       
       
                 end
@@ -1183,22 +1204,39 @@ if keyword_set(BOUNDINGBOX) then begin
                   ; If XBOUND is set => keeping all points between these two values
                   keyword_set(XBOUND): begin
                     
+                                         self.print, 1,"Filtering data by X/Easting dimension..."
+                                         index = Where((x le BOUNDINGBOX[0]) and (x ge BOUNDINGBOX[1]), $
+                                                       indexCount, /NULL)
+                                         if index ne !NULL then pulseData = pulseBlock[index] else pulseData = !NULL
+                    
                                        end
                   ; If YBOUND is set => keeping all points between these two values                      
                   keyword_set(YBOUND): begin
-                      
-                            
+
+                                         self.print, 1,"Filtering data by Y/Northing dimension..."
+                                         index = Where((y le BOUNDINGBOX[0]) and (y ge BOUNDINGBOX[1]), $
+                                                        indexCount, /NULL)
+                                         if index ne !NULL then pulseData = pulseBlock[index] else pulseData = !NULL
+                 
                                        end
                    ; If ZBOUND is set => keeping all points between these two values
                    keyword_set(ZBOUND): begin
-  
+
+                                         self.print, 1,"Filtering data by Z/Height dimension..."
+                                         index = Where((z le BOUNDINGBOX[0]) and (z ge BOUNDINGBOX[1]), $
+                                           indexCount, /NULL)
+                                         if index ne !NULL then pulseData = pulseBlock[index] else pulseData = !NULL
   
                    end
                   ; If no associated keyword is set, then the altitude is considered and
                   ; all the points lying within the two altitude are kept                      
                   ELSE: begin
-                  
-                  
+                    
+                          self.print, 1,"No Keyword set -> Filtering data by Z/Height dimension..."
+                          index = Where((z le BOUNDINGBOX[0]) and (z ge BOUNDINGBOX[1]), $
+                            indexCount, /NULL)
+                          if index ne !NULL then pulseData = pulseBlock[index] else pulseData = !NULL
+
                          end
                          
                   endcase
@@ -1212,13 +1250,20 @@ if keyword_set(BOUNDINGBOX) then begin
                     ; If MAX is set => keeping all points under this cutoff value
                     ; The cutoff value is inclusive (gt)
                     keyword_set(MAX): begin
+                      
+                                        self.print, 1,"Applying maximum height threshold..."
+                                        index = Where(z le BOUNDINGBOX, indexCount, /NULL)
+                                        if index ne !NULL then pulseData = pulseBlock[index] else pulseData = !NULL
             
                     end
                     ; If MIN is set => keeping all points above this cutoff value
                     ; The cutoff value is inclusive (lt)
                     keyword_set(MIN): begin
             
-            
+                                        self.print, 1,"Applying minimum height threshold..."
+                                        index = Where(z ge BOUNDINGBOX, indexCount, /NULL)
+                                        if index ne !NULL then pulseData = pulseBlock[index] else pulseData = !NULL
+
                     end
                     ELSE:
                   Endcase
@@ -1229,20 +1274,36 @@ if keyword_set(BOUNDINGBOX) then begin
       
   endcase
   
-  
+self.print, 1, strcompress("Number of pulse records returned by selection: " + string(n_elements(pulseData)))
+
 endif
+
 
 free_lun, getDataLun
 ; Updating data members - if NO_SAVE keyword not set
 ; If NO_SAVE is set, then the function will return the array of structure pulseData
 if keyword_set(NO_SAVE) ne 1 then begin
+  
+;  if keyword_set(OUTPUTID) then begin
+;    self.print,1,"Saving index into object's selection index..."
+;    self.plsPulseIndSel = ptr_new(index)
+;  endif else begin
+;    self.print,1,"Saving selection into data to caller..."
+;    Return, pulseData
+;  endelse
+  
   self.print,1,"Saving pulse data to object's data member..."
-  self.plspulserec = ptr_new(pulseData)
+;  self.plspulserec = ptr_new(pulseData)
   self.plspulseInd = ptr_new(index)
   Return, 1
 endif else begin
-  self.print,1,"Returning pulse data to caller..."
-  Return, pulseData
+  if keyword_set(OUTPUTID) then begin
+    self.print,1,"Returning data index to caller..."
+    Return, index
+  endif else begin
+    self.print,1,"Returning pulse data to caller..."
+    Return, pulseData
+  endelse
 endelse
 
 End
