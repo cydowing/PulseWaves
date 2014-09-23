@@ -1278,6 +1278,7 @@ self.print, 1, strcompress("Number of pulse records returned by selection: " + s
 
 endif
 
+self.print,1, Strcompress("Time :"+String(Systime(1) - T) +' Seconds')
 
 free_lun, getDataLun
 ; Updating data members - if NO_SAVE keyword not set
