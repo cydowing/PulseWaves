@@ -6,7 +6,7 @@ void = {pulsezip, $
         spawnCommand    : '',$
         bitParsError    : 0B,$
         bitIsKeyword    : 0B,$
-        inherits consoleclass $
+        inherits consoleclass $             ; Inherits from the consoleclass for formatted console and log ouptut
         }
         
 End
@@ -19,12 +19,23 @@ Function pulsezip::init, $
                    PULSEZIP_PATH = PULSEZIP_PATH, $ ; Fully qualified path to pulsezip - if not provided - will use pulsezip.exe provided with the code
                    WINE_PATH = WINE_PATH , $        ; Fully qualified path to wine - Only for OsX and linux environments
                    _EXTRA = PARM                    ; Pulsezip parameters
-                   
+    
+
+; Determining OS type
+os = os_define()
+               
 ; locating the dep - in case of OsX and Linux plateform, the pulsezip.exe is provided here. But it's to the user
 ; to make sure that wine is installed on the system
 
-; in case of linux or osx environment, make sure that wine is install
 
+; in case of linux or osx environment, make sure that wine is install
+; Happen the wine command at the beginning of self.spawnCommand
+if os.osType eq 'unix' then begin
+  ; testing the presence of wine in the system - might no tbe 100% accurate
+  spawn, '/usr/local/bin/wine --version', res, err
+  if strlowcase(strmid(res, 0, 4)) eq 'wine' then print, 'Wine seems installed on the system...' else print, "Wine doesn't seems installed on the system..." 
+  self.spawnCommand ='/usr/local/bin/wine '
+endif else begin
 
 ; Making sure that an input has been provided
 ;Checking that the provided file exist
@@ -51,9 +62,17 @@ endif else begin
   self.inFilePath = newPath
 endelse
 
-self.spawnCommand = 'pulsezip -i ' + self.inFilePath + ' '
+if keyword_set(PULSEZIP_PATH) then begin
+  self.spawnCommand = self.spawnCommand + PUSLEZIP_PATH + os.sep + 'pulsezip -i ' + self.inFilePath + ' '
+endif else begin
+  cd, File_dirname(Routine_filepath('pulsezip__define', /either))
+  cd, '..' + os.sep + 'dep'
+  spawn, 'pwd', res
+  self.spawnCommand = self.spawnCommand + res + os.sep + 'pulsezip -i ' + self.inFilePath + ' '
+endelse
 
-dum = self.parametersParser(_extra = parm)
+; If not keywords passed, then just execute the command
+if n_elements(parm) ne 0 then dum = self.parametersParser(_extra = parm)
 
 ; If no errors returned by parsing the arguments, then executing the command
 if self.bitParsError ne 1 then  dum = self.go()
@@ -69,7 +88,7 @@ Function pulsezip::stringCommandCreator, tag, array
 if self.bitIsKeyword eq 0 then begin
   
   for j = 0, n_elements(array)-1 do begin
-    if j eq 0 then result = '-' + tag + ' ' + strcompress(string(array[j]), /REMOVE_ALL) else $
+    if j eq 0 then result = '-' + strlowcase(tag) + ' ' + strcompress(string(array[j]), /REMOVE_ALL) else $
                    result = result + ' ' + strcompress(string(array[j]), /REMOVE_ALL)
   endfor
   
@@ -90,7 +109,7 @@ End
 
 Function pulsezip::errorParsingArgument, tName, parm, n
 
-self.print, 3, 'The keyword ' + tName + ' takes ' + strcompress(string(n),/REMOVE_ALL) + ' parameters and ' + strcompress(string(n_elements(parm)),/REMOVE_ALL) + ' have been provided...'
+print, 'The keyword ' + tName + ' takes ' + strcompress(string(n),/REMOVE_ALL) + ' parameters and ' + strcompress(string(n_elements(parm)),/REMOVE_ALL) + ' have been provided...'
 self.bitParsError = 1B 
 return, 0
 
@@ -188,9 +207,15 @@ tName[i] eq 'CLIP_ANCHOR_Z_ABOVE':           if N_elements(parm.(i)) ne 1 then d
 ;-DROP_SCAN_DIRECTION 0
 tName[i] eq 'DROP_SCAN_DIRECTION':           if N_elements(parm.(i)) ne 1 then dum = self.errorParsingArgument(tName[i], parm.(i), 1)
 ;-SCAN_DIRECTION_CHANGE_ONLY
-tName[i] eq 'SCAN_DIRECTION_CHANGE_ONLY':           if N_elements(parm.(i)) ne 1 then dum = self.errorParsingArgument(tName[i], parm.(i), 1)
+tName[i] eq 'SCAN_DIRECTION_CHANGE_ONLY': begin
+  if N_elements(parm.(i)) ne 1 then dum = self.errorParsingArgument(tName[i], parm.(i), 1)
+  self.Bitiskeyword = 1
+end
 ;-EDGE_OF_SCAN_LINE_ONLY
-tName[i] eq 'EDGE_OF_SCAN_LINE_ONLY':           if N_elements(parm.(i)) ne 1 then dum = self.errorParsingArgument(tName[i], parm.(i), 1)
+tName[i] eq 'EDGE_OF_SCAN_LINE_ONLY': begin
+  if N_elements(parm.(i)) ne 1 then dum = self.errorParsingArgument(tName[i], parm.(i), 1)
+  self.Bitiskeyword = 1
+end
  
 ;FILTER PULSES BASED ON THEIR TIME STAMP.
 ;-KEEP_TIME 11.125 130.725
@@ -236,11 +261,22 @@ tName[i] eq 'TRANSLATE_Z':           if N_elements(parm.(i)) ne 1 then dum = sel
 ;-TRANSLATE_XYZ 0.5 0.5 0.01
 tName[i] eq 'TRANSLATE_XYZ':           if N_elements(parm.(i)) ne 3 then dum = self.errorParsingArgument(tName[i], parm.(i), 3)
 ;-SWITCH_X_Y
-tName[i] eq 'SWITCH_X_Y':           if N_elements(parm.(i)) ne 1 then dum = self.errorParsingArgument(tName[i], parm.(i), 0)
+tName[i] eq 'SWITCH_X_Y': begin
+  if N_elements(parm.(i)) ne 1 then dum = self.errorParsingArgument(tName[i], parm.(i), 0)
+  self.Bitiskeyword = 1
+end
+
 ;-SWITCH_Y_Z
-tName[i] eq 'SWITCH_Y_Z':           if N_elements(parm.(i)) ne 1 then dum = self.errorParsingArgument(tName[i], parm.(i), 0)
+tName[i] eq 'SWITCH_Y_Z': begin
+  if N_elements(parm.(i)) ne 1 then dum = self.errorParsingArgument(tName[i], parm.(i), 0)
+  self.Bitiskeyword = 1
+end
+
 ;-SWITCH_X_Z
-tName[i] eq 'SWITCH_X_Z':           if N_elements(parm.(i)) ne 1 then dum = self.errorParsingArgument(tName[i], parm.(i), 0)
+tName[i] eq 'SWITCH_X_Z': begin
+  if N_elements(parm.(i)) ne 1 then dum = self.errorParsingArgument(tName[i], parm.(i), 0)
+  self.Bitiskeyword = 1
+end
 
 
 ;TRANSFORM RAW XYZ INTEGERS.
@@ -274,7 +310,6 @@ tName[i] eq 'CHANGE_PULSE_SOURCE_FROM_TO':           if N_elements(parm.(i)) ne 
 tName[i] eq 'HELP': begin
   if N_elements(parm.(i)) ne 1 then dum = self.errorParsingArgument(tName[i], parm.(i), 1)
   self.bitIsKeyword = 1
-  
   end  
    
 endcase
@@ -323,7 +358,7 @@ END
 
 Function pulsezip::go
 
-  self.print, 1, 'Executing command: ' + self.Spawncommand
+  print,'Executing command: ' + self.Spawncommand
   Spawn, self.Spawncommand
   return, 1
   
