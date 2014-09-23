@@ -4,3 +4,5 @@ pulsewaves/tester/testing_pulsewaves.pro
 pulsewaves/tester/test_extra.pro
 
 *.swp
+
+*.sav
