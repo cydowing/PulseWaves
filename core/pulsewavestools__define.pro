@@ -80,7 +80,7 @@ End
 
 
 
-; This function will get the Anchors points
+; This function will get the Anchors points which represent the trajectory
 Function pulsewavestools::getTrajectory
 
   Return, *self.Plstrajectory
@@ -89,7 +89,6 @@ End
 
 
 ; This function will computes the anchors points contains in the PLS file
-; A pointer to the pulsewaves object need to be passed
 Function pulsewavestools::computeAnchorPoints
 
   scale = self.getHeaderProperty(/XYZSCALE)
@@ -102,7 +101,8 @@ Function pulsewavestools::computeAnchorPoints
     [ (pulses.anchorZ * scale.z) + offset.z ] $
     ) )
   print, ((*self.plsAnchors).xyz())[0:5,*]
-  ; The result is effectively the optical center trajectory
+  
+  ; The result is effectively the trajectory of the optical center
   self.plsTrajectory = self.plsAnchors
   
   return, 1
@@ -112,7 +112,6 @@ End
 
 
 ; This function will computes the anchors points contains in the PLS file
-; A pointer to the pulsewaves object need to be passed
 Function pulsewavestools::computeTargetPoints
 
   scale = self.getHeaderProperty(/XYZSCALE)
@@ -133,10 +132,23 @@ End
 
 ; This function will computes the anchors points contains in the PLS file
 ; A pointer to the pulsewaves object need to be passed
-Function pulsewavestools::computeVectors, UNIT = UNIT
+Function pulsewavestools::computeVectors, $
+                          INDEX = INDEX, $
+                          UNIT = UNIT
 
-  pulseDir = (*self.Plsanchors).makeVectorArrayFromPointArray((*self.Plstargets))
+
+if keyword_set(INDEX) then begin
   
+  anchorPoint = (*self.Plsanchors).extractPoint(INDEX)
+  targetPoint = (*self.Plstargets).extractPoint(INDEX)
+  pulseDir = anchorPoint.makeVector(targetPoint)
+  
+endif else begin
+  
+  pulseDir = (*self.Plsanchors).makeVectorArrayFromPointArray((*self.Plstargets))
+
+endelse
+
 ;  pulseDir = [$
 ;    [ (pulses.Targetx * scale.X) + offset.X ],$
 ;    [ (pulses.Targety * scale.Y) + offset.Y ],$
@@ -155,21 +167,41 @@ End
 
 ; This function will computes the pulses contains in the PLS file
 ; A pointer to the pulsewaves object need to be passed
-Function pulsewavestools::computePulses, UNIT = UNIT
+Function pulsewavestools::computePulses, $
+                          INDEX = INDEX, $
+                          UNIT = UNIT
 
+  ; If the anchors points and the target points have been computed yet, then do it
   if *(self.plsAnchors) eq !NULL then origin = self.computeAnchorPoints()
   if *(self.plsTargets) eq !NULL then target = self.computeTargetPoints()
-  
-  print, ((*self.Plsanchors).xyz())[0:5,*]  
-  print, ((*self.Plstargets).xyz())[0:5,*]  
-  
-  if keyword_set(unit) then direct = self.computeVectors(/UNIT) else $
-    direct = self.computeVectors()
+
+  ; If the direction vector(s)haven't been computed yet, then do it
+  if *(self.plsDir) eq !NULL then begin
+    if keyword_set(unit) then direct = self.computeVectors(/UNIT) else $
+      dum = self.computeVectors()
+  endif
     
-;  dumRay = plsrayarrayclass(origin, direct)
-  self.plsRays = ptr_new(plsrayarrayclass(*self.PlsAnchors, *self.Plsdir))
+  ; Creating the ray class object - if the keyword INDEX is set, then only
+  ; one ray is created. If no keyword is set, then an array of ray is created     
+  if keyword_set(INDEX) then begin
+    
+    anchorPoint = (*self.Plsanchors).extractPoint(INDEX)
+    targetPoint = (*self.Plstargets).extractPoint(INDEX)
+    dum = self.getPulses(INDEX)
+    returnWave = self->pulsewaves::readWaves()
+    self.plsRays = ptr_new(plsrayclass(anchorPoint, *self.Plsdir, returnWave))
+
+  endif else begin
+    
+    anchorPoint = (*self.plsAnchors)
+    targetPoint = (*self.plsTargets)
+    self.plsRays = ptr_new(plsrayarrayclass(*self.PlsAnchors, *self.Plsdir))
+    
+  endelse
   
+
   
+  ; Returning the Ray to the caller
   Return, *self.Plsrays
 
 End

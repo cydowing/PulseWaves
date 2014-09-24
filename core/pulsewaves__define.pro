@@ -1273,8 +1273,10 @@ if keyword_set(BOUNDINGBOX) then begin
     ELSE:
       
   endcase
-  
-self.print, 1, strcompress("Number of pulse records returned by selection: " + string(n_elements(pulseData)))
+
+if size(pulseData, /TYPE) ne 8 then $
+  self.print, 2, "Nothing to return..." $
+else self.print, 1, strcompress("Number of pulse records returned by selection: " + string(n_elements(pulseData)))
 
 endif
 
@@ -1285,19 +1287,13 @@ free_lun, getDataLun
 ; If NO_SAVE is set, then the function will return the array of structure pulseData
 if keyword_set(NO_SAVE) ne 1 then begin
   
-;  if keyword_set(OUTPUTID) then begin
-;    self.print,1,"Saving index into object's selection index..."
-;    self.plsPulseIndSel = ptr_new(index)
-;  endif else begin
-;    self.print,1,"Saving selection into data to caller..."
-;    Return, pulseData
-;  endelse
-  
   self.print,1,"Saving pulse data to object's data member..."
-;  self.plspulserec = ptr_new(pulseData)
+  self.plspulserec = ptr_new(pulseData)
   self.plspulseInd = ptr_new(index)
   Return, 1
+  
 endif else begin
+  
   if keyword_set(OUTPUTID) then begin
     self.print,1,"Returning data index to caller..."
     Return, index
@@ -1305,6 +1301,7 @@ endif else begin
     self.print,1,"Returning pulse data to caller..."
     Return, pulseData
   endelse
+
 endelse
 
 End
@@ -1337,6 +1334,7 @@ Function pulsewaves::readWaves
   ; Some constant for the plotting
   plotColor = ["r","b","g","y"]
   plotFlag = 0B
+  returnPulse = {returnPulse, n:ptr_new(), pulse:ptr_new(), durationFromAnchor:ptr_new(), lut:ptr_new()}
   
   openr, getDataLun, self.wvsFilePath, /get_lun, /swap_if_big_endian
   ; Retriving the wave data packet
@@ -1386,7 +1384,8 @@ Function pulsewaves::readWaves
             self.printsep
             self.print, 1, "The wave block has Pulse Descriptor #" + Strcompress(string(descriptorVal),/REMOVE_ALL)
             self.print, 1, "The wave block has " + Strcompress(string(nSampling),/REMOVE_ALL) + " sampling..."
-                
+            
+               
             ; Reading for each pulse the information            
             for p = 0, nSampling-1 do begin
 
@@ -1426,6 +1425,7 @@ Function pulsewaves::readWaves
   ;                  
                   self.print, 1, 'The first sample of the pulse coincides with the Anchor Point...'
                   durationFromAnchor = 0.
+                  dFAnchor = 0
                   
                 endif else begin
                 
@@ -1435,7 +1435,8 @@ Function pulsewaves::readWaves
                   Readu, getDataLun, durationFromAnchor
                   self.print, 1, Strcompress("Duration from Anchor: " + string(durationFromAnchor) + "...")
                   self.print, 1, Strcompress("Scale & offset: " + String(pulseScal[p]) + "  " + String(pulseOffs[p]) )
-                  self.print, 1, Strcompress("Final duration from anchor: " + String(durationFromAnchor *pulseScal[p] +pulseOffs[p]) )
+                  dFAnchor = (durationFromAnchor *pulseScal[p]) + pulseOffs[p]
+                  self.print, 1, Strcompress("Final duration from anchor: " + String(dFAnchor))
                   
                 endelse
                 
@@ -1480,7 +1481,9 @@ Function pulsewaves::readWaves
                   if p eq 0 then begin
 ;                    if n_elements(waves) gt 1 then begin
                     ;plt = plot((((*lut[2]).(1)).(1))[waves], color=self.colarray[self.plotFlag])
-                      plt = plot(waves, color=(plotColor)[plotFlag])
+                    newWave = (((*lut[1]).(1)).(1))[waves]
+                    plp = plot((where(newWave ne -2.000000e+037))+dFAnchor, newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag])
+;                      plp = plot(waves, color=(plotColor)[plotFlag])
                     plotFlag += 1B
 ;                    endif
                   endif else begin
@@ -1488,26 +1491,38 @@ Function pulsewaves::readWaves
 ;                    plt = plot((((*lut[1]).(1)).(1))[waves], color=(plotColor)[plotFlag], /OVERPLOT)
                     
                     newWave = (((*lut[1]).(1)).(1))[waves]
-                    plt = plot(where(newWave ne -2.000000e+037), newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag], /OVERPLOT)
+                    plt = plot((where(newWave ne -2.000000e+037))+dFAnchor, newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag], /OVERPLOT)
                     
                     plotFlag += 1B
                     
                   endelse
                   
-                  ;dum = self.plotWaves(p, lut, waves)
-
+                  ; Saving pulse information into a structure that will be return
+                  if p eq 0 then begin
                   
-;                endfor
+                    n = pulseNumberSample
+                    tempPulse = waves
+                    tempDFA = dFAnchor
+                  
+                  endif else begin
+                  
+                    n = [n, pulseNumberSample]
+                    tempPulse = [tempPulse, waves]
+                    tempDFA = [tempDFA, dFAnchor]
+                    
+                  endelse
+
                 
                 self.printsep
                 
               endfor
-              
-              
-              
+                
             endfor
             
-
+            returnPulse.n = ptr_new(n)
+            returnPulse.pulse = ptr_new(tempPulse)
+            returnPulse.durationFromAnchor = ptr_new(tempDFA)
+            returnPulse.lut = ptr_new( (((*lut[1]).(1)).(1)) )
             
           end
              
@@ -1532,9 +1547,9 @@ Function pulsewaves::readWaves
 ;    
 ;    index = lindgen((*(self.plsHeader)).nPulses)
     
-    if (size(pulseData))[2] ne 8 then $
+    if size(returnPulse, /TYPE) ne 8 then $
       self.print,2,"Nothing return !" else $
-      self.print,1,strcompress('Number of waveform records returned: ' + string((*self.plsHeader).nPulses))
+      self.print,1,strcompress('Returning waveform of pulse: ')
     self.print,1, strcompress("Loading Time :"+string(SYSTIME(1) - T) +' Seconds')
     
 
@@ -1545,7 +1560,7 @@ Function pulsewaves::readWaves
 ;  self.wvsWaverec = ptr_new(pulseData)
 ;  self.wvsWaveInd = ptr_new(index)
   
-  Return, 1
+  Return, returnPulse
   
 End
 
