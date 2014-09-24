@@ -25,34 +25,6 @@
 ;   Antoine Cottin
 ;   
 ;-
-Pro pulsewaves__define
-
-void = { pulsewaves, $
-  plsFilePath   : "",$                ; Fully qualified path to the PLS file
-  wvsFilePath   : "",$                ; Fully qualified path to the WVS file
-  sysSep        : "",$                ; OS path separator
-  pathRoot      : "",$                ; String the represents the object root path.
-  osRoot        : "",$                ; String the represents the OS root path.
-  plsStrtConst  : ptr_new(),$         ; Pointer to the constant that define some structure fields
-  plsHeader     : ptr_new(),$         ; Pointer to the PLS Header data
-  plsVlrArray   : ptr_new(),$         ; Pointer to the Variable Length Records (in reading order - Header/Key)
-  plsPulseDes   : ptr_new(),$         ; Pointer to an array of structure holding all the Pulse descriptor VLR
-  plsPulseRec   : ptr_new(),$         ; Pointer to the records of the PLS file hold in the data member
-  plsPulseInd   : ptr_new(),$         ; Pointer to the index of the records from the PLS file hold in plsPulseRec
-  plsPulseIndSel: ptr_new(),$         ; Pointer to an index of the selected pulses defined by pulsewaves::getPulses
-  plsAvlrarray  : ptr_new(),$         ; Pointer to the Append Variable Length Records (in reading order - Header/Key)
-  wvsHeader     : ptr_new(),$         ; Pointer to the header of the WVS file
-  wvsWaveRec    : ptr_new(),$         ; Pointer to the records of the WVS file corresponding to the records in plsPulseRec
-  wvsWaveInd    : ptr_new(),$         ; Pointer to the index corresponding to the records in plsPulseRec
-  plotColor     : strarr(4),$         ; String array containing the color index for the plot of the waves
-  bitNoPrint    : 0B,$                ; Byte that specify if the print out of the HEADER/VLR/AVLR is enable or disable
-  plotFlag      : 0B,$                ; A bit to count how many segment have been  plot
-  inherits consoleclass $             ; Inherits from the consoleclass for formatted console and log ouptut
-}
-
-End
-
-
 
 ;+
 ;
@@ -1947,5 +1919,33 @@ Function pulsewaves::getAVlRecords, index
 
 End
 
+
+
+Pro pulsewaves__define
+
+  void = { pulsewaves, $
+    plsFilePath   : "",$                ; Fully qualified path to the PLS file
+    wvsFilePath   : "",$                ; Fully qualified path to the WVS file
+    sysSep        : "",$                ; OS path separator
+    pathRoot      : "",$                ; String the represents the object root path.
+    osRoot        : "",$                ; String the represents the OS root path.
+    plsStrtConst  : ptr_new(),$         ; Pointer to the constant that define some structure fields
+    plsHeader     : ptr_new(),$         ; Pointer to the PLS Header data
+    plsVlrArray   : ptr_new(),$         ; Pointer to the Variable Length Records (in reading order - Header/Key)
+    plsPulseDes   : ptr_new(),$         ; Pointer to an array of structure holding all the Pulse descriptor VLR
+    plsPulseRec   : ptr_new(),$         ; Pointer to the records of the PLS file hold in the data member
+    plsPulseInd   : ptr_new(),$         ; Pointer to the index of the records from the PLS file hold in plsPulseRec
+    plsPulseIndSel: ptr_new(),$         ; Pointer to an index of the selected pulses defined by pulsewaves::getPulses
+    plsAvlrarray  : ptr_new(),$         ; Pointer to the Append Variable Length Records (in reading order - Header/Key)
+    wvsHeader     : ptr_new(),$         ; Pointer to the header of the WVS file
+    wvsWaveRec    : ptr_new(),$         ; Pointer to the records of the WVS file corresponding to the records in plsPulseRec
+    wvsWaveInd    : ptr_new(),$         ; Pointer to the index corresponding to the records in plsPulseRec
+    plotColor     : strarr(4),$         ; String array containing the color index for the plot of the waves
+    bitNoPrint    : 0B,$                ; Byte that specify if the print out of the HEADER/VLR/AVLR is enable or disable
+    plotFlag      : 0B,$                ; A bit to count how many segment have been  plot
+    inherits consoleclass $             ; Inherits from the consoleclass for formatted console and log ouptut
+  }
+
+End
 
 

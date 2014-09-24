@@ -1,12 +1,3 @@
-Pro rapidlasso_api__define
-
-void = {rapidlasso_api,$
-  pPulsewaves : ptr_new() $
-  }
-  
-End
-
-
 Function rapidlasso_api::init
 
 plsObj = pulsewaves(INPUTFILE = INPUTFILE)
@@ -125,4 +116,12 @@ Function rapidlasso_api::reader_close
 
 End
 
+
+Pro rapidlasso_api__define
+
+  void = {rapidlasso_api,$
+    pPulsewaves : ptr_new() $
+  }
+
+End
 

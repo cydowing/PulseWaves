@@ -1,18 +1,3 @@
-Pro pulsezip__define
-
-void = {pulsezip, $
-        pulseZipPath    : '',$
-        inFilePath      : '',$
-        spawnCommand    : '',$
-        bitParsError    : 0B,$
-        bitIsKeyword    : 0B,$
-        bitZipOrNot     : 0B,$
-        inherits consoleclass $             ; Inherits from the consoleclass for formatted console and log ouptut
-        }
-
-End
-
-
 Function pulsezip::init, $
                    I = I, $                         ; Input file keyword mandatory 
                    O = O, $                         ; Output zip file keyword, optional
@@ -381,3 +366,20 @@ Function pulsezip::go
   return, 1
   
 End
+
+
+
+Pro pulsezip__define
+
+  void = {pulsezip, $
+    pulseZipPath    : '',$
+    inFilePath      : '',$
+    spawnCommand    : '',$
+    bitParsError    : 0B,$
+    bitIsKeyword    : 0B,$
+    bitZipOrNot     : 0B,$
+    inherits consoleclass $             ; Inherits from the consoleclass for formatted console and log ouptut
+  }
+
+End
+

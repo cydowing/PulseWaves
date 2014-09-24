@@ -21,21 +21,6 @@
 ; :Author:
 ;   Antoine Cottin
 ;-
-Pro pulsewavestools__define
-
-void = {pulsewavestools,$
-  pPulseWaves   : ptr_new(),$         ; Pointer to the pulsewaves object
-  plsAnchors    : ptr_new(),$         ; Pointer to a pointarrayclass that holds the anchor points coordinates
-  plsTargets    : ptr_new(),$         ; Pointer to a pointarrayclass that holds the target points coordinates
-  plsDir        : ptr_new(),$         ; Pointer to a vectorarrayclass that holds the direction of the pulses
-  plsRays       : ptr_new(),$         ; Pointer to a rayarrayclass that will holds the ray direction normilized
-  plsTrajectory : ptr_new(),$         ; Pointer to an array (n,3) representing the trajectory of the optical center
-  inherits pulsewaves $               ; Inherits from the pulsewaves to access pulsewaves file
-       }
-
-End
-
-
 Function pulsewavestools::init, INPUTFILE = FILE, $
     _EXTRA = CONSOLE_OPTIONS
     
@@ -250,4 +235,18 @@ Function pulsewavestools::plotWaves
 End
 
 
+
+Pro pulsewavestools__define
+
+  void = {pulsewavestools,$
+    pPulseWaves   : ptr_new(),$         ; Pointer to the pulsewaves object
+    plsAnchors    : ptr_new(),$         ; Pointer to a pointarrayclass that holds the anchor points coordinates
+    plsTargets    : ptr_new(),$         ; Pointer to a pointarrayclass that holds the target points coordinates
+    plsDir        : ptr_new(),$         ; Pointer to a vectorarrayclass that holds the direction of the pulses
+    plsRays       : ptr_new(),$         ; Pointer to a rayarrayclass that will holds the ray direction normilized
+    plsTrajectory : ptr_new(),$         ; Pointer to an array (n,3) representing the trajectory of the optical center
+    inherits pulsewaves $               ; Inherits from the pulsewaves to access pulsewaves file
+  }
+
+End
 
