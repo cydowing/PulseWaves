@@ -22,9 +22,10 @@
 ;   Antoine Cottin
 ;-
 Function pulsewavestools::init, INPUTFILE = FILE, $
+    NO_VLR = NO_VLR, $
     _EXTRA = CONSOLE_OPTIONS
     
-dum = self->pulsewaves::init(INPUTFILE = FILE, _extra = console_options)
+dum = self->pulsewaves::init(INPUTFILE = FILE, NO_VLR = NO_VLR, _extra = console_options)
 ;self.pPulseWaves = pPulsewaves
 self.plsAnchors = ptr_new(!NULL)
 self.plsTargets = ptr_new(!NULL)
@@ -133,13 +134,6 @@ endif else begin
   pulseDir = (*self.Plsanchors).makeVectorArrayFromPointArray((*self.Plstargets))
 
 endelse
-
-;  pulseDir = [$
-;    [ (pulses.Targetx * scale.X) + offset.X ],$
-;    [ (pulses.Targety * scale.Y) + offset.Y ],$
-;    [ (pulses.Targetz * scale.Z) + offset.Z ] $
-;    ]
-    
     
   if keyword_set(unit) then dum = pulseDir.normalizeLengthBy(1000.)
 
@@ -193,6 +187,7 @@ End
 
 
 
+
 Function pulsewavestools::getReturnSampleCoordinates, $
             FIRST = FIRST, $
             LAST = LAST, $
@@ -206,6 +201,12 @@ z = anchorZ + firstReturnSample * ((*self.Plsrays).getDirection).Z()
 End
 
 
+Function pulsewavestools::getNumberOfPoints
+
+return, (*self.PlsAnchors).getDim()
+
+End
+
 
 Function pulsewavestools::readWaves
 
@@ -217,20 +218,7 @@ End
 
 Function pulsewavestools::plotWaves
 
-  if p eq 0 then begin
-    ;                    if n_elements(waves) gt 1 then begin
-    ;plt = plot((((*lut[2]).(1)).(1))[waves], color=self.colarray[self.plotFlag])
-    plt = plot(waves, color=(plotColor)[plotFlag])
-    plotFlag += 1B
-    ;                    endif
-  endif else begin
 
-    newWave = (((*lut[1]).(1)).(1))[waves]
-    plt = plot(where(newWave ne -2.000000e+037), newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag], /OVERPLOT)
-
-    plotFlag += 1B
-
-  endelse
   
 End
 
@@ -239,7 +227,6 @@ End
 Pro pulsewavestools__define
 
   void = {pulsewavestools,$
-    pPulseWaves   : ptr_new(),$         ; Pointer to the pulsewaves object
     plsAnchors    : ptr_new(),$         ; Pointer to a pointarrayclass that holds the anchor points coordinates
     plsTargets    : ptr_new(),$         ; Pointer to a pointarrayclass that holds the target points coordinates
     plsDir        : ptr_new(),$         ; Pointer to a vectorarrayclass that holds the direction of the pulses

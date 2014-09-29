@@ -122,7 +122,7 @@ Function pulsewaves::init, INPUTFILE = FILE, $
   ;self.plspulserec = ptr_new(self.initpulserecord())
   
   ;Checking that the provided file exist
-  if keyword_set(INPUTFILE) eq 0 then file = ''
+  if keyword_set(INPUTFILE) eq 0 and n_elements(FILE) eq 0 then file = ''
   exist = File_test(file)
   if exist eq 1 then begin
     self.plsFilePath = file
@@ -581,11 +581,11 @@ Function pulsewaves::readHeader
   if self.bitnoprint and '00000001'bb eq 1 then dum = self.setMode(2)
   
   ; Open the file
-  Openr, 1, self.plsFilePath, /swap_if_big_endian
+  Openr, rLun, self.plsFilePath, /swap_if_big_endian, /get_lun
 
   ; Check if the file is a PLS file
   signature = bytarr((*self.Plsstrtconst).PLS_USER_ID_SIZE)
-  Readu, 1, signature
+  Readu, rLun, signature
 
 self.print, 1, "Opening " + strcompress(self.plsFilePath, /REMOVE_ALL)
 
@@ -593,19 +593,19 @@ self.print, 1, "Opening " + strcompress(self.plsFilePath, /REMOVE_ALL)
 
     self.print,1, 'PulseWaves file detected..."
     self.print,1, "Looking for version number..."
-    Point_lun,1, 173
+    Point_lun, rLun, 173
     majorVersion = 1B
     minorVersion = 1B
-    Readu, 1, majorVersion
-    Readu, 1, minorVersion
+    Readu, rLun, majorVersion
+    Readu, rLun, minorVersion
     self.print,1,Strcompress("PulseWaves Version " + String(Fix(majorVersion)) + "." + Strcompress(String(Fix(minorVersion)),/remove_all) + " detected.")
     self.print,1, "Initializing the header..."
 
     ; Closing and re-opening the file to reinitialize the pointer
-    Close,1
-    Openr, 1, self.plsFilePath, /swap_if_big_endian
+    Close, rLun
+    Openr, rLun, self.plsFilePath, /swap_if_big_endian, /get_lun
     ; Putting file data into data member
-    Readu, 1, (*self.plsheader)
+    Readu, rLun, (*self.plsheader)
     
     self.print,1,"========================================================="
     self.print,1, "Reading file header..."
@@ -640,7 +640,7 @@ self.print, 1, "Opening " + strcompress(self.plsFilePath, /REMOVE_ALL)
     
 ;    (*self.initplsheader)
     ; Sanity check of the header
-    point_lun, -1, dum
+    point_lun, -rLun, dum
     self.print,1, "Sanity check of the header..."
     if dum eq (*self.plsHeader).headerSize then self.print,1, "Header' sanity check passed..." else begin
       self.print,2, "Header' sanity check NOT passed..."
@@ -648,14 +648,14 @@ self.print, 1, "Opening " + strcompress(self.plsFilePath, /REMOVE_ALL)
       self.print,2, "We continue anyway to read (for now)..."
     endelse
 
-  Close, 1
+  Close, rLun
 
   self.print,1,"The associated waveform file is " + strcompress(self.wvsFilePath, /REMOVE_ALL)
   self.print,1, "Reading Header of the associated Waves file..."
   ; Open the file
-  Openr, 1, self.wvsFilePath, /swap_if_big_endian
+  Openr, rLun, self.wvsFilePath, /swap_if_big_endian, /get_lun
   self.wvsHeader = ptr_new(self.initwvsheader())
-  Readu, 1, (*self.wvsHeader)
+  Readu, rLun, (*self.wvsHeader)
   if String((*self.wvsHeader).signature) eq 'PulseWavesWaves' then self.print, 1, "Header's signature is valid..." else begin
     self.print, 2, "Header' signature is invalid !"
   endelse
