@@ -163,17 +163,20 @@ Function pulsewavestools::computePulses, $
     
   ; Creating the ray class object - if the keyword INDEX is set, then only
   ; one ray is created. If no keyword is set, then an array of ray is created     
-  if keyword_set(INDEX) then begin
+  if n_elements(INDEX) ne 0 then begin
+;  if keyword_set(INDEX) then begin
     
     anchorPoint = (*self.Plsanchors).extractPoint(INDEX)
     targetPoint = (*self.Plstargets).extractPoint(INDEX)
     dum = self.getPulses(INDEX)
+
     dirVec = (*self.Plsdir).getSubArray(INDEX)
     
     if keyword_set(NO_PLOT) then returnWave = self->pulsewaves::readWaves(/NO_PLOT) else returnWave = self->pulsewaves::readWaves()
     
     if strlowcase(obj_class(anchorPoint)) eq 'pointclass' and strlowcase(obj_class(dirVec)) eq 'vectorclass' then $
               self.plsRays = ptr_new(plsrayclass(anchorPoint, dirVec, returnWave)) else return, !NULL
+
 
   endif else begin
     
