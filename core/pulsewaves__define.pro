@@ -1298,8 +1298,11 @@ End
 ; :Keywords:
 ;
 ;-
-Function pulsewaves::readWaves
+Function pulsewaves::readWaves, $
+                        NO_PLOT = NO_PLOT
 
+;  close, getDataLun, /FORCE
+  
   ; start time
   T = SYSTIME(1)
   
@@ -1450,24 +1453,28 @@ Function pulsewaves::readWaves
                   
                   Readu, getDataLun, waves
                   
-                  if p eq 0 then begin
-;                    if n_elements(waves) gt 1 then begin
-                    ;plt = plot((((*lut[2]).(1)).(1))[waves], color=self.colarray[self.plotFlag])
-                    newWave = (((*lut[1]).(1)).(1))[waves]
-                    plp = plot((where(newWave ne -2.000000e+037))+dFAnchor, newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag])
-;                      plp = plot(waves, color=(plotColor)[plotFlag])
-                    plotFlag += 1B
-;                    endif
-                  endif else begin
-                    ;                    pgt = plot((((*lut[2]).(1)).(1))[waves], color=(self.plotColor)[plotFlag], /OVERPLOT)
-;                    plt = plot((((*lut[1]).(1)).(1))[waves], color=(plotColor)[plotFlag], /OVERPLOT)
+                  if keyword_set(NO_PLOT) ne 1 then begin
                     
-                    newWave = (((*lut[1]).(1)).(1))[waves]
-                    plt = plot((where(newWave ne -2.000000e+037))+dFAnchor, newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag], /OVERPLOT)
-                    
-                    plotFlag += 1B
-                    
-                  endelse
+                    if p eq 0 then begin
+  ;                    if n_elements(waves) gt 1 then begin
+                      ;plt = plot((((*lut[2]).(1)).(1))[waves], color=self.colarray[self.plotFlag])
+                      newWave = (((*lut[1]).(1)).(1))[waves]
+                      plp = plot((where(newWave ne -2.000000e+037))+dFAnchor, newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag])
+  ;                      plp = plot(waves, color=(plotColor)[plotFlag])
+                      plotFlag += 1B
+  ;                    endif
+                    endif else begin
+                      ;                    pgt = plot((((*lut[2]).(1)).(1))[waves], color=(self.plotColor)[plotFlag], /OVERPLOT)
+  ;                    plt = plot((((*lut[1]).(1)).(1))[waves], color=(plotColor)[plotFlag], /OVERPLOT)
+                      
+                      newWave = (((*lut[1]).(1)).(1))[waves]
+                      plt = plot((where(newWave ne -2.000000e+037))+dFAnchor, newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag], /OVERPLOT)
+                      
+                      plotFlag += 1B
+                      
+                    endelse
+                  
+                  endif
                   
                   ; Saving pulse information into a structure that will be return
                   if p eq 0 then begin
@@ -1526,7 +1533,7 @@ Function pulsewaves::readWaves
     
 
   
-  free_lun, getDataLun
+  free_lun, getDataLun, /FORCE
 ;  ; Updating data members
 ;  self.print,1,"Linking wave data to object's data member..."
 ;  self.wvsWaverec = ptr_new(pulseData)

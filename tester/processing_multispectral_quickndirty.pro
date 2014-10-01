@@ -1,7 +1,7 @@
 Pro processing_multispectral_quickndirty
 
 ; Getting all the PLs files
-fileArr = file_search('/Volumes/FLYINGTREE/Corbin_Final/Export_Pulsewaves/Processing', '*.pls')
+fileArr = file_search('/Users/antoine/Documents/Carbomap/Project/Riegl_Multispectral_lidar/pulsewaves', '*.pls')
 
 ; Extracting the line number and scanner number
 lineNumb = STRMID(file_basename(fileArr), 9, 1)
@@ -30,10 +30,11 @@ for i = 1,6 do begin
 ;  While k lt nRef do begin
   While nLoop lt 10 do begin
     
-    ray1 = pls1.computePulses(INDEX = nLoop, /UNIT)
+    ray1 = pls1.computePulses(INDEX = nLoop, /UNIT, /NO_PLOT)
     d12 = ray1.findSimilarRay(ray2)
+    simRay2 = pls2.computePulses(INDEX = d12, /UNIT, /NO_PLOT)
     d13 = ray1.findSimilarRay(ray3)
-    
+    simRay3 = pls3.computePulses(INDEX = d13, /UNIT, /NO_PLOT)
     
     nLoop += 1UL
   Endwhile

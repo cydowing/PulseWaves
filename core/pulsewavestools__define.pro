@@ -109,7 +109,7 @@ Function pulsewavestools::computeTargetPoints
     [ (pulses.targetY * scale.Y) + offset.Y ],$
     [ (pulses.targetZ * scale.Z) + offset.Z ] $
     ) )
-  print, ((*self.Plstargets).xyz())[0:5,*]  
+
   Return, 1
 
 End
@@ -148,6 +148,7 @@ End
 ; A pointer to the pulsewaves object need to be passed
 Function pulsewavestools::computePulses, $
                           INDEX = INDEX, $
+                          NO_PLOT = NO_PLOT, $
                           UNIT = UNIT
 
   ; If the anchors points and the target points have been computed yet, then do it
@@ -157,7 +158,7 @@ Function pulsewavestools::computePulses, $
   ; If the direction vector(s)haven't been computed yet, then do it
   if *(self.plsDir) eq !NULL then begin
     if keyword_set(unit) then direct = self.computeVectors(/UNIT) else $
-      dum = self.computeVectors()
+      direct = self.computeVectors()
   endif
     
   ; Creating the ray class object - if the keyword INDEX is set, then only
@@ -167,14 +168,18 @@ Function pulsewavestools::computePulses, $
     anchorPoint = (*self.Plsanchors).extractPoint(INDEX)
     targetPoint = (*self.Plstargets).extractPoint(INDEX)
     dum = self.getPulses(INDEX)
-    returnWave = self->pulsewaves::readWaves()
-    self.plsRays = ptr_new(plsrayclass(anchorPoint, *self.Plsdir, returnWave))
+    dirVec = (*self.Plsdir).getSubArray(INDEX)
+    
+    if keyword_set(NO_PLOT) then returnWave = self->pulsewaves::readWaves(/NO_PLOT) else returnWave = self->pulsewaves::readWaves()
+    
+    if strlowcase(obj_class(anchorPoint)) eq 'pointclass' and strlowcase(obj_class(dirVec)) eq 'vectorclass' then $
+              self.plsRays = ptr_new(plsrayclass(anchorPoint, dirVec, returnWave)) else return, !NULL
 
   endif else begin
     
     anchorPoint = (*self.plsAnchors)
     targetPoint = (*self.plsTargets)
-    self.plsRays = ptr_new(plsrayarrayclass(*self.PlsAnchors, *self.Plsdir))
+    self.plsRays = ptr_new(plsrayarrayclass(*self.PlsAnchors, dirVec))
     
   endelse
   
