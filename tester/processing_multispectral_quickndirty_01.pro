@@ -1,7 +1,9 @@
 Pro processing_multispectral_quickndirty_01
 
 ; Getting all the PLs files
-fileArr = file_search('/Users/antoine/Documents/Carbomap/Project/Riegl_Multispectral_lidar/pulsewaves', '*.pls')
+;fileArr = file_search('/Users/antoine/Documents/Carbomap/Project/Riegl_Multispectral_lidar/pulsewaves', '*.pls')
+;fileArr = file_search('F:\PLS_Folder', '*.pls')
+fileArr = 'F:\Rapidlasso\TreeMaps_UTM_47_Line13.pls'
 
 ; Extracting the line number and scanner number
 lineNumb = STRMID(file_basename(fileArr), 9, 1)
@@ -38,11 +40,16 @@ for j = 1, 3 do begin
       
       if size(pulse,/TYPE) eq 11 then begin
         ; Get the last segment
-        value = pulse.getLastSegment()
-        peaks = pointocator(value.Int, thres = -157., /NOSMOOTH, /ADD_TAIL)
+;        value = pulse.getLastSegment()
+        value = pulse.getFirstSegment()
+        peaks = pointocator(value.Int, thres = -2.0e+037, /NOSMOOTH, /ADD_TAIL)
         if (*(peaks.rawuppoints)) ne !NULL then begin
-          savedIntensity = (value.int)((*(peaks.rawuppoints))[-1])
-          savedCoordinates = (value.coor).extractPoint( (*(peaks.rawuppoints))[-1] )
+;          ; Getting the last pulse of the segment
+;          savedIntensity = (value.int)((*(peaks.rawuppoints))[-1])
+;          savedCoordinates = (value.coor).extractPoint( (*(peaks.rawuppoints))[-1] )
+          ; Getting the first pusle of the segment
+          savedIntensity = (value.int)((*(peaks.rawuppoints))[0])
+          savedCoordinates = (value.coor).extractPoint( (*(peaks.rawuppoints))[0] )
         
 ;          ; Progressive result printing
 ;          if flag eq 0 then begin
@@ -92,7 +99,7 @@ for j = 1, 3 do begin
   endfor
   
   name = 'band_' + strcompress(string(j), /remove_all) + '.csv'
-  write_csv, name,transpose(x),transpose(y),transpose(z),transpose(i)
+  write_csv, name, [transpose(x),transpose(y),transpose(z),transpose(i)]
   
 endfor
 

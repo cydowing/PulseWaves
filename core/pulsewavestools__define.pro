@@ -174,9 +174,11 @@ Function pulsewavestools::computePulses, $
     
     if keyword_set(NO_PLOT) then returnWave = self->pulsewaves::readWaves(/NO_PLOT) else returnWave = self->pulsewaves::readWaves()
     
-    if strlowcase(obj_class(anchorPoint)) eq 'pointclass' and strlowcase(obj_class(dirVec)) eq 'vectorclass' then $
-              self.plsRays = ptr_new(plsrayclass(anchorPoint, dirVec, returnWave)) else return, !NULL
-
+    if size(anchorPoint,/type) eq 11 and size(dirVec,/type) eq 11 then begin
+        if strlowcase(obj_class(anchorPoint)) eq 'pointclass' and strlowcase(obj_class(dirVec)) eq 'vectorclass' then $
+          self.plsRays = ptr_new(plsrayclass(anchorPoint, dirVec, returnWave)) else return, !NULL
+        endif
+ 
 
   endif else begin
     
