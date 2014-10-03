@@ -5,21 +5,22 @@ Pro processing_multispectral_quickndirty_01
 ;fileArr = file_search('F:\PLS_Folder', '*.pls')
 fileArr = 'F:\Rapidlasso\TreeMaps_UTM_47_Line13.pls'
 
-; Extracting the line number and scanner number
-lineNumb = STRMID(file_basename(fileArr), 9, 1)
-scanNumb = STRMID(file_basename(fileArr), 13, 1)
+;; Extracting the line number and scanner number
+;lineNumb = STRMID(file_basename(fileArr), 9, 1)
+;scanNumb = STRMID(file_basename(fileArr), 13, 1)
 flag = 0B
-
-for j = 1, 3 do begin
-  for i = 0, 6 do begin
+;
+;for j = 1, 3 do begin
+;  for i = 0, 6 do begin
 ;  for j = 1, 3 do begin
   
     ; We will consider sc1 one as the reference for searching into the other data set
-    sc1Index = where(lineNumb eq i and scanNumb eq j)
+;    sc1Index = where(lineNumb eq i and scanNumb eq j)
+    sc1Index = 0
     pls1 = pulsewavestools(INPUTFILE = fileArr[sc1Index], /NO_VLR, /NO_HEADER, /QUIET)
     
     nRef = pls1.getHeaderProperty(/NPULSES)
-    nLoop = 1UL
+    nLoop = 509412UL
 
      While nLoop lt nRef do begin
 ;    While nLoop lt 10 do begin    
@@ -96,11 +97,12 @@ for j = 1, 3 do begin
       nLoop += 1UL
     Endwhile
 
-  endfor
+;  endfor
   
-  name = 'band_' + strcompress(string(j), /remove_all) + '.csv'
+;  name = 'band_' + strcompress(string(j), /remove_all) + '.csv'
+  name = 'first_return.csv'
   write_csv, name, [transpose(x),transpose(y),transpose(z),transpose(i)]
   
-endfor
+;endfor
 
 End
