@@ -86,7 +86,8 @@ Function pulsewavestools::computeAnchorPoints
     [ (pulses.anchorY * scale.y) + offset.y ],$
     [ (pulses.anchorZ * scale.z) + offset.z ] $
     ) )
-  print, ((*self.plsAnchors).xyz())[0:5,*]
+;  print, 'Samples of Anchor Points'
+;  print, ((*self.plsAnchors).xyz())[0:5,*]
   
   ; The result is effectively the trajectory of the optical center
   self.plsTrajectory = self.plsAnchors
@@ -97,7 +98,7 @@ End
 
 
 
-; This function will computes the anchors points contains in the PLS file
+; This function will computes the targets points contains in the PLS file
 Function pulsewavestools::computeTargetPoints
 
   scale = self.getHeaderProperty(/XYZSCALE)
