@@ -1100,7 +1100,7 @@ End
 ;-
 Function pulsewaves::readPulses, INDEX = INDEX, CURRENT = CURRENT, ALL=ALL, $
             BOUNDINGBOX = BOUNDINGBOX, $
-            XBOUND = XBOUND, YBOUND = yBOUND, ZBOUND = ZBOUND, $
+            XBOUND = XBOUND, YBOUND = YBOUND, ZBOUND = ZBOUND, $
             MAX = MAX, MIN = MIN, $
             OUTPUTID = OUTPUTID, $
             NO_SAVE = NO_SAVE
