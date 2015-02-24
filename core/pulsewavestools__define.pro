@@ -81,7 +81,7 @@ Function pulsewavestools::computeAnchorPoints
   offset = self.getHeaderProperty(/XYZOFFSET)
   pulses = self.getPulses()
   
-  self.plsAnchors = ptr_new( pointarrayclass($
+  self.plsAnchors = ptr_new( pointarrayclass_sazerac($
     [ (pulses.anchorX * scale.x) + offset.x ],$
     [ (pulses.anchorY * scale.y) + offset.y ],$
     [ (pulses.anchorZ * scale.z) + offset.z ] $
@@ -105,7 +105,7 @@ Function pulsewavestools::computeTargetPoints
   offset = self.getHeaderProperty(/XYZOFFSET)
   pulses = self.getPulses()
 
-  self.Plstargets = Ptr_new( pointarrayclass($
+  self.Plstargets = Ptr_new( pointarrayclass_sazerac($
     [ (pulses.targetX * scale.X) + offset.X ],$
     [ (pulses.targetY * scale.Y) + offset.Y ],$
     [ (pulses.targetZ * scale.Z) + offset.Z ] $
@@ -176,7 +176,7 @@ Function pulsewavestools::computePulses, $
     if keyword_set(NO_PLOT) then returnWave = self->pulsewaves::readWaves(/NO_PLOT) else returnWave = self->pulsewaves::readWaves()
     
     if size(anchorPoint,/type) eq 11 and size(dirVec,/type) eq 11 then begin
-        if strlowcase(obj_class(anchorPoint)) eq 'pointclass' and strlowcase(obj_class(dirVec)) eq 'vectorclass' then $
+        if strlowcase(obj_class(anchorPoint)) eq 'pointclass_sazerac' and strlowcase(obj_class(dirVec)) eq 'vectorclass' then $
           self.plsRays = ptr_new(plsrayclass(anchorPoint, dirVec, returnWave)) else return, !NULL
         endif
  
@@ -238,8 +238,8 @@ End
 Pro pulsewavestools__define
 
   void = {pulsewavestools,$
-    plsAnchors    : ptr_new(),$         ; Pointer to a pointarrayclass that holds the anchor points coordinates
-    plsTargets    : ptr_new(),$         ; Pointer to a pointarrayclass that holds the target points coordinates
+    plsAnchors    : ptr_new(),$         ; Pointer to a pointarrayclass_sazerac that holds the anchor points coordinates
+    plsTargets    : ptr_new(),$         ; Pointer to a pointarrayclass_sazerac that holds the target points coordinates
     plsDir        : ptr_new(),$         ; Pointer to a vectorarrayclass that holds the direction of the pulses
     plsRays       : ptr_new(),$         ; Pointer to a rayarrayclass that will holds the ray direction normilized
     plsTrajectory : ptr_new(),$         ; Pointer to an array (n,3) representing the trajectory of the optical center
