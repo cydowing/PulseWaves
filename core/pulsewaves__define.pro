@@ -81,9 +81,6 @@ Function pulsewaves::init, INPUTFILE = FILE, $
   self.plotFlag = 0B
   
   
-  ; Closing any open previous file
-  close, 1
-  
   ; Call consoleclass superclass Initialization method.
   dum = self->consoleclass::init(_extra = console_options)
 
@@ -142,7 +139,9 @@ Function pulsewaves::init, INPUTFILE = FILE, $
         newPath = DIALOG_PICKFILE(/READ, FILTER = '*.pls')
         exist = File_test(newPath)
       endelse
+      
     endwhile
+    
     self.plsFilePath = newPath
     self.wvsFilePath = self.getWaveFileName(self.plsFilePath)
   endelse
@@ -150,6 +149,7 @@ Function pulsewaves::init, INPUTFILE = FILE, $
   ; Loading data into data members
   dum = self.readHeader()
   if (*self.plsheader).nvlrecords ne 0 then dum = self.readVLR()
+
   if (*self.plsheader).nPulses ne 0 then begin
     dum = self.readPulses(/ALL)
 ;    dum = self.readWaves(/ALL)
@@ -229,13 +229,7 @@ Function pulsewaves::initDataConstant
   }
   
   self.plsStrtConst = ptr_new(void)
-  
-  ; Defining a flag and a color array for the plotting
-;  colorArr = ["r","c","g","y"]
-;  self.plotColor = colorArr
-;  self.plotFlag = 0B
-  
-  
+;  
   return, 1
   
 End
@@ -376,7 +370,7 @@ void = { plsheader, $
   pulseCompress   : 0UL, $                        ; Pulse compression
   reserved        : 0ULL,  $                      ; Reserved
   nvlrecords      : 0UL,   $                      ; Number of Variable Length Records
-  navlrecords     : 0UL,   $                      ; Number of Append Variable Length Records
+  navlrecords     : 0L,   $                       ; Number of Append Variable Length Records
   tScale          : 0D, $                         ; T Scale Factor
   tOffset         : 0D, $                         ; T offset
   tMin            : 0ULL, $                       ; t minimum
@@ -461,12 +455,16 @@ Function pulsewaves::initplsavlr
 
   void = {plsvlr, $
     userID          : bytarr((*self.Plsstrtconst).PLS_USER_ID_SIZE), $                 ; User ID, any string, remaining characters must be set to null
-    recordID        : 0UL, $                        ; ID for each vlr, define by manufacturer
-    reserved        : 0Ul, $                        ; Reserved, must be set to 0
-    recLengthBefore : 0ULL, $                       ; Number of bytes contain in the vlr
+    recordID        : 0UL, $                        ; ID for each avlr, define by manufacturer
+    reserved        : 0UL, $                        ; Reserved, must be set to 0
+    recLengthBefore : 0ULL, $                       ; Number of bytes contain in the avlr
     description     : bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE) $                  ; Null terminated text description. Any characters not used must be null
   }
   
+;  keys = ['userID', 'recordID', 'reserved', 'recLengthBefore', 'description']
+;  values = List(bytarr((*self.Plsstrtconst).PLS_USER_ID_SIZE), 0UL, 0UL,0ULL, bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE))
+;  void = orderedhash(keys, values)
+
   return, void
   
 End
@@ -717,12 +715,12 @@ Function pulsewaves::readVLR
     ; Defining a flag for the number of pulseTable
     plsTable = 0
   
-     self.print,1, "Reading Variable Length Records..."
+    self.print,1, "Reading Variable Length Records..."
     ; Init VLR Header structure
     vlrStruct = self.initplsvlr()
-    close, 1
-    openr, 1, self.plsFilePath, /swap_if_big_endian
-    point_lun, 1, (*self.plsheader).headerSize
+
+    openr, rLun, self.plsFilePath, /swap_if_big_endian, /get_lun
+    point_lun, rLun, (*self.plsheader).headerSize
     
     ; This is pointer array that will hold the VLR, header/key, in reading order
     vlrRecID = lonarr(((*self.plsheader).nvlrecords))
@@ -733,7 +731,7 @@ Function pulsewaves::readVLR
     for w=0,((*self.plsheader).nvlrecords)-1 do begin
     
  
-      readu, 1, vlrStruct
+      readu, rLun, vlrStruct
 ;      print, vlrStruct.recordID
       self.printsep
       self.print, 1, "Variable length header record " + strcompress(string(w+1), /REMOVE_ALL) + " of " + strcompress(string(((*self.plsheader).nvlrecords)), /REMOVE_ALL)
@@ -763,7 +761,7 @@ Function pulsewaves::readVLR
               digitizerGain:0.0D,$
               digitizerOffset:0.0D $
             }
-            readu, 1, wfDescriptor
+            readu, rLun, wfDescriptor
             
             vlrArr[(w*2)+1] = ptr_new(wfDescriptor)
 ;            vlrStArr[w].key = ptr_new(wfDescriptor)
@@ -783,7 +781,7 @@ Function pulsewaves::readVLR
               wNumberOfKeys:0US$    ;TODO to update if we add fields in there
               }
           
-            readu,1,geoKeyHeader
+            readu, rLun,geoKeyHeader
             
             sKeyEntry = {$
               wKeyID:0US,$
@@ -793,7 +791,7 @@ Function pulsewaves::readVLR
               }
               
             geoKeyArray = replicate(sKeyEntry, geoKeyHeader.wNumberOfKeys)
-            readu,1,geoKeyArray
+            readu,rLun,geoKeyArray
             
             tempStruc = {header:geoKeyHeader, key:geoKeyArray}
 ;            vlrStArr[w].key = ptr_new(tempStruc)
@@ -833,7 +831,7 @@ Function pulsewaves::readVLR
               description : bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE) $
               }
             
-            readu, 1, scannerKey 
+            readu, rLun, scannerKey 
 ;            vlrStArr[w].key = ptr_new(scannerKey)
             vlrArr[(w*2)+1] = ptr_new(scannerKey)
             
@@ -877,7 +875,7 @@ Function pulsewaves::readVLR
               description : bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE) $
             }
             
-            readu, 1, pulseKey
+            readu, rLun, pulseKey
 ;            vlrArr[w+1] = ptr_new(pulseKey)
             self.print,1,'Reading composition record...'
             
@@ -920,7 +918,7 @@ Function pulsewaves::readVLR
             }
             
             samplingRecords = replicate(samplingKey, pulseKey.nSampling)
-            readu, 1, samplingRecords
+            readu, rLun, samplingRecords
             vlrArr[(w*2)+1] = ptr_new({compositionRecord:pulseKey, samplingRecord:samplingRecords})
 ;            print, samplingRecords
             
@@ -963,7 +961,7 @@ Function pulsewaves::readVLR
               description : bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE)$     ; Description
             }
             
-            readu, 1, pulseTable
+            readu, rLun, pulseTable
             
             self.print,1,'  PULSETable ' + Strcompress(String(plsTable), /REMOVE_ALL)
 
@@ -986,7 +984,7 @@ Function pulsewaves::readVLR
                 description :bytarr((*self.Plsstrtconst).PLS_DESCRIPTION_SIZE)$      ; Description
                }
                
-               readu, 1, pulseLookupTable
+               readu, rLun, pulseLookupTable
                
                self.print,1, "   PULSElookupTable " + Strcompress(String(t), /REMOVE_ALL)
                
@@ -996,7 +994,7 @@ Function pulsewaves::readVLR
                self.print,1, "      Description: " + Strcompress(String(pulseLookupTable.description))
                
                lookupTable = fltarr(pulseLookupTable.nEntries)
-               readu, 1, lookupTable
+               readu, rLun, lookupTable
 ;               self.print, 1, lookuptable
 
                if t eq 0 then void = {LUTheader:pulseLookupTable,LUTTable:lookupTable} else void = [void, {LUTheader:pulseLookupTable,LUTTable:lookupTable}]
@@ -1013,7 +1011,7 @@ Function pulsewaves::readVLR
         else: begin
         
             generic = bytarr(vlrStruct.recLengthAfter)
-            readu,1,generic
+            readu, rLun,generic
 
             vlrArr[(w*2)+1] = ptr_new(generic)
           
@@ -1023,7 +1021,8 @@ Function pulsewaves::readVLR
  
 endfor
 
-close,1
+close, rLun
+
 self.Plspulsedes = ptr_new(vlrRecID)
 self.plsvlrarray = ptr_new(vlrArr)
 
@@ -1109,6 +1108,35 @@ Function pulsewaves::readPulses, INDEX = INDEX, CURRENT = CURRENT, ALL=ALL, $
 T = SYSTIME(1)
 
 openr, getDataLun, self.plsFilePath, /get_lun, /swap_if_big_endian
+
+; keyword /all set -> returning all the points of the PLS file
+if Keyword_set(INDEX) then begin
+  
+  case 1 of
+    n_elements(INDEX) eq 1: begin
+      point_lun, getDataLun, (*self.plsHeader).offsetPulse + (INDEX * (*self.plsHeader).pulseSize)
+      pulseData = self.initpulserecord()
+      readu, getDataLun, pulseData
+    end
+    
+    N_elements(INDEX) eq 2: begin
+      Point_lun, getDataLun, (*self.Plsheader).Offsetpulse + (INDEX[0] * (*self.Plsheader).Pulsesize)
+      tempPulseData = self.initpulserecord()
+      pulseData = replicate(tempPulseData, INDEX[1]-INDEX[0])
+      Readu, getDataLun, pulseData
+    end
+    
+    N_elements(INDEX) gt 2: begin
+      dum = self.readPulses(/ALL, /NO_SAVE)
+      pulseData = dum[INDEX]
+    end
+    
+    Else:
+    
+  endcase
+
+endif
+
 
 ; keyword /all set -> returning all the points of the PLS file
 if keyword_set(ALL) then begin
@@ -1595,6 +1623,45 @@ Function pulsewaves::readAVLR
   if self.Bitnoprint and '00000100'bb eq 4 then dum = self.setMode(2)
   
     ; WIP
+  ; Getting file size and pointing at the end of the file
+  fInfo = file_info(self.plsFilePath)
+  
+  self.print,1, "Reading Append Variable Length Records..."
+  
+  ; Init VLR Header structure
+  avlrStruct = self.initplsavlr()
+  
+  openr, ralun, self.plsFilePath, /GET_LUN, /SWAP_IF_BIG_ENDIAN
+  point_lun, ralun, (fInfo.size)-1
+   
+
+  ; This is pointer array that will hold the VLR, header/key, in reading order
+  avlrRecID = Lonarr(((*self.Plsheader).Navlrecords))
+  ;    vlrSt = {header:ptr_new(),key:ptr_new()}
+  ;    vlrStArr = replicate(vlrSt, ((*self.plsheader).nvlrecords))
+  avlrArr = Ptrarr(((*self.Plsheader).Navlrecords) * 2)
+
+  for w=0,((*self.Plsheader).Navlrecords)-1 do begin
+
+
+    Readu, ralun, avlrStruct
+    ;      print, vlrStruct.recordID
+    self.printsep
+    self.print, 1, "Variable length header record " + Strcompress(String(w+1), /REMOVE_ALL) + " of " + Strcompress(String(((*self.Plsheader).Nvlrecords)), /REMOVE_ALL)
+    self.print, 1, "Reserved: " + Strcompress(String(vlrStruct.Reserved))
+    self.print, 1, "User ID: " + Strcompress(String(vlrStruct.Userid))
+    self.print, 1, "Record ID: " + Strcompress(String(vlrStruct.Recordid))
+    self.print, 1, "Length after header: " + Strcompress(String(vlrStruct.Reclengthafter))
+    self.print, 1, "Description: " + Strcompress(String(vlrStruct.Description))
+
+    ; Creating a temp file that hold the nth VLR record - one file per record
+    vlrRecID[w] = vlrStruct.Recordid
+    ;      vlrStArr[w].header = ptr_new(vlrStruct)
+    vlrArr[w*2] = Ptr_new(vlrStruct)
+
+  endfor
+  
+  
   
   ; restoring previous console mode
   if self.Bitnoprint and '00000100'bb eq 4 then dum = self.restoreMode()

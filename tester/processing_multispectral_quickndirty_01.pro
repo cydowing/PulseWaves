@@ -39,62 +39,66 @@ flag = 0B
       ; Compute the pulse
       pulse = pls1.computePulses(INDEX = nLoop, /UNIT, /NO_PLOT)
       print, *(pulse.getDurAnchor())
-      
-;      if size(pulse,/TYPE) eq 11 then begin
-;        ; Get the last segment
-;;        value = pulse.getLastSegment()
-;        value = pulse.getFirstSegment()
-;        peaks = pointocator(value.Int, thres = -2.0e+037, /NOSMOOTH, /ADD_TAIL)
-;        if (*(peaks.rawuppoints)) ne !NULL then begin
-;;          ; Getting the last pulse of the segment
-;;          savedIntensity = (value.int)((*(peaks.rawuppoints))[-1])
-;;          savedCoordinates = (value.coor).extractPoint( (*(peaks.rawuppoints))[-1] )
-;          ; Getting the first pusle of the segment
-;          savedIntensity = (value.int)((*(peaks.rawuppoints))[0])
-;          savedCoordinates = (value.coor).extractPoint( (*(peaks.rawuppoints))[0] )
-;        
-;          ; Progressive result printing
-;          if flag eq 0 then begin
-;            x = savedCoordinates.x()
-;            y = savedCoordinates.y()
-;            z = savedCoordinates.z()
-;            i = savedIntensity
-;
-;            name = 'band_' + Strcompress(String(j), /remove_all) + '.csv'
-;            Openw, rLun, name, /get_lun
-;            Printf, rLun, x, y, z, i
-;            Close, rLun
-;
-;            flag += 1B
-;          endif else begin
-;            x = savedCoordinates.x()
-;            y = savedCoordinates.y()
-;            z = savedCoordinates.z()
-;            i = savedIntensity
-;
-;            name = 'band_' + Strcompress(String(j), /remove_all) + '.csv'
-;            Openw, rLun, name, /get_lun, /APPEND
-;            Printf, rLun, x, y, z, i
-;            Close, rLun
-;          endelse
 
-;;             Concatenation for final print
-;          if flag eq 0 then begin
-;            x = savedCoordinates.x()
-;            y = savedCoordinates.y()
-;            z = savedCoordinates.z()
-;            i = savedIntensity
-;            flag += 1B
-;          endif else begin
-;            x = [x,savedCoordinates.x()]
-;            y = [y,savedCoordinates.y()]
-;            z = [z,savedCoordinates.z()]
-;            i = [i,savedIntensity]
-;          endelse
-;          
-;        endif
-;        
-;      endif
+;########################################################  
+      if size(pulse,/TYPE) eq 11 then begin
+        ; Get the last segment
+;        value = pulse.getLastSegment()
+        value = pulse.getFirstSegment()
+        peaks = pointocator(value.Int, thres = -2.0e+037, /NOSMOOTH, /ADD_TAIL)
+        if (*(peaks.rawuppoints)) ne !NULL then begin
+;          ; Getting the last pulse of the segment
+;          savedIntensity = (value.int)((*(peaks.rawuppoints))[-1])
+;          savedCoordinates = (value.coor).extractPoint( (*(peaks.rawuppoints))[-1] )
+          ; Getting the first pusle of the segment
+          savedIntensity = (value.int)((*(peaks.rawuppoints))[0])
+          savedCoordinates = (value.coor).extractPoint( (*(peaks.rawuppoints))[0] )
+        
+          ; Progressive result printing
+          if flag eq 0 then begin
+            x = savedCoordinates.x()
+            y = savedCoordinates.y()
+            z = savedCoordinates.z()
+            i = savedIntensity
+
+            name = 'band_' + Strcompress(String(j), /remove_all) + '.csv'
+            Openw, rLun, name, /get_lun
+            Printf, rLun, x, y, z, i
+            Close, rLun
+
+            flag += 1B
+          endif else begin
+            x = savedCoordinates.x()
+            y = savedCoordinates.y()
+            z = savedCoordinates.z()
+            i = savedIntensity
+
+            name = 'band_' + Strcompress(String(j), /remove_all) + '.csv'
+            Openw, rLun, name, /get_lun, /APPEND
+            Printf, rLun, x, y, z, i
+            Close, rLun
+          endelse
+
+;             Concatenation for final print
+          if flag eq 0 then begin
+            x = savedCoordinates.x()
+            y = savedCoordinates.y()
+            z = savedCoordinates.z()
+            i = savedIntensity
+            flag += 1B
+          endif else begin
+            x = [x,savedCoordinates.x()]
+            y = [y,savedCoordinates.y()]
+            z = [z,savedCoordinates.z()]
+            i = [i,savedIntensity]
+          endelse
+          
+        endif
+        
+      endif
+;######################################################## 
+
+
       nLoop += 1UL
     Endwhile
 
