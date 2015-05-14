@@ -38,8 +38,8 @@ End
 
 
 
-; This function will get the Anchors points
-Function pulsewavestools::getAnchors
+; This function will get the Anchor(s)
+Function pulsewavestools::getAnchor
 
 return, *self.plsAnchors
 
@@ -47,8 +47,8 @@ End
 
 
 
-; This function will get the Anchors points
-Function pulsewavestools::getVector
+; This function will get the direction vector(s)
+Function pulsewavestools::getDirection
 
   Return, *self.Plsdir
 
@@ -56,8 +56,8 @@ End
 
 
 
-; This function will get the Anchors points
-Function pulsewavestools::getRays
+; This function will get the ray(s)
+Function pulsewavestools::getRay
 
   Return, *self.Plsrays
 
@@ -74,7 +74,7 @@ Function pulsewavestools::getTrajectory
 End
 
 
-; This function will computes the anchors points contains in the PLS file
+; This function will computes the anchors point(s) contains in the pulse record(s)
 Function pulsewavestools::computeAnchorPoints
 
   scale = self.getHeaderProperty(/XYZSCALE)
@@ -98,7 +98,7 @@ End
 
 
 
-; This function will computes the targets points contains in the PLS file
+; This function will computes the target point contains in the pulse record
 Function pulsewavestools::computeTargetPoints
 
   scale = self.getHeaderProperty(/XYZSCALE)
@@ -118,7 +118,6 @@ End
 
 
 ; This function will computes the anchors points contains in the PLS file
-; A pointer to the pulsewaves object need to be passed
 Function pulsewavestools::computeVectors, $
                           INDEX = INDEX, $
                           UNIT = UNIT
@@ -146,7 +145,6 @@ End
 
 
 ; This function will computes the pulses contains in the PLS file
-; A pointer to the pulsewaves object need to be passed
 Function pulsewavestools::computePulses, $
                           INDEX = INDEX, $
                           NO_PLOT = NO_PLOT, $
@@ -164,8 +162,7 @@ Function pulsewavestools::computePulses, $
     
   ; Creating the ray class object - if the keyword INDEX is set, then only
   ; one ray is created. If no keyword is set, then an array of ray is created     
-  if n_elements(INDEX) ne 0 then begin
-;  if keyword_set(INDEX) then begin
+  if keyword_set(INDEX) then begin
     
     anchorPoint = (*self.Plsanchors).extractPoint(INDEX)
     targetPoint = (*self.Plstargets).extractPoint(INDEX)
@@ -176,8 +173,8 @@ Function pulsewavestools::computePulses, $
     if keyword_set(NO_PLOT) then returnWave = self->pulsewaves::readWaves(/NO_PLOT) else returnWave = self->pulsewaves::readWaves()
     
     if size(anchorPoint,/type) eq 11 and size(dirVec,/type) eq 11 then begin
-        if strlowcase(obj_class(anchorPoint)) eq 'pointclass_sazerac' and strlowcase(obj_class(dirVec)) eq 'vectorclass' then $
-          self.plsRays = ptr_new(plsrayclass(anchorPoint, dirVec, returnWave)) else return, !NULL
+;        if strlowcase(obj_class(anchorPoint)) eq 'pointclass_sazerac' and strlowcase(obj_class(dirVec)) eq 'vectorclass' then $
+          self.plsRays = ptr_new(plsrayclass(anchorPoint, dirVec, returnWave)) ;else return, !NULL
         endif
  
 
@@ -231,6 +228,13 @@ Function pulsewavestools::plotWaves
 
 
   
+End
+
+
+
+Function pulsewavestools::extractPoints
+
+
 End
 
 

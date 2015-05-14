@@ -20,6 +20,9 @@
 ; 	 - More serious developements
 ;   September 2014
 ;    - More support on the VLR, implementing VLR 300001 <= n < 300255
+;   May 2015
+;    - Implementation of the INDEX keyword to pulsewaves::readPulses() plus some code cleaning
+;    - Adding some support of AVLR event if not entirely used yet
 ;
 ; :Author:
 ;   Antoine Cottin
