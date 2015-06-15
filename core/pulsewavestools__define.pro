@@ -154,7 +154,7 @@ Function pulsewavestools::computePulses, $
   if *(self.plsAnchors) eq !NULL then origin = self.computeAnchorPoints()
   if *(self.plsTargets) eq !NULL then target = self.computeTargetPoints()
 
-  ; If the direction vector(s)haven't been computed yet, then do it
+  ; If the direction vector(s) haven't been computed yet, then do it
   if *(self.plsDir) eq !NULL then begin
     if keyword_set(unit) then direct = self.computeVectors(/UNIT) else $
       direct = self.computeVectors()
