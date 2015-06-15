@@ -234,6 +234,119 @@ End
 
 Function pulsewavestools::extractPoints
 
+; Setting some constants
+flag = 0B
+nLoop = 1UL ; the loop is setup to one as passed as a keyword and therefore will provoke a bug
+
+; Initializing pulsewavetools with the input file - no print of the VLR, HEADER and the log output is turned to QUIET
+; TODO: adapt keyword to object
+;plsObj = pulsewavestools(INPUTFILE = self.plsFilePath, /NO_VLR, /NO_HEADER, /QUIET)
+
+; Getting the number of pulse hold in the file
+nRef = self.getHeaderProperty(/NPULSES)
+
+
+While nLoop lt nRef do begin
+
+  ; Error catcher initialization
+  Catch, Error_status
+
+  IF Error_status NE 0 THEN BEGIN
+    self.print, 3, 'Error catcher stepping in...'
+    traceback = Scope_Traceback(/STRUCTURE)
+    self.print, 3, 'Error caught in ' + traceback[-1].ROUTINE + ', scope level ' + StrTrim(traceback[-1].LEVEL, 2)
+    print,  'Error index: ', Error_status
+    print,  'Error message: ', !ERROR_STATE.MSG
+    nLoop += 1UL
+    if nLoop ge nRef then return, 0
+    Catch, /CANCEL
+  ENDIF
+
+  ; Compute the pulse
+  pulse = self.computePulses(INDEX = nLoop, /UNIT)
+
+
+  ;########################################################
+  if size(pulse,/TYPE) eq 11 then begin
+    
+    nSeg = pulse.getNumberOfSegment()
+    
+    ; We starting loop from 1 as 0 is the emitted pulse
+    for segLoop = 1, nSeg-1 do begin
+    
+      value = pulse.getNthSegment(segLoop)
+      peaks = pointocator(value.Int, thres = -2.0e+037, /NOSMOOTH, /ADD_TAIL)
+      
+      if (*(peaks.rawuppoints)) ne !NULL then begin
+        
+        savedIntensity = (value.int)((*(peaks.rawuppoints))[0])
+        savedCoordinates = (value.coor).extractPoint( (*(peaks.rawuppoints))[0] )
+        
+      endif
+      
+    endfor
+    
+    
+;    ; Get the last segment
+;    ;        value = pulse.getLastSegment()
+;    value = pulse.getFirstSegment()
+;    peaks = pointocator(value.Int, thres = -2.0e+037, /NOSMOOTH, /ADD_TAIL)
+;    if (*(peaks.rawuppoints)) ne !NULL then begin
+;      ;          ; Getting the last pulse of the segment
+;      ;          savedIntensity = (value.int)((*(peaks.rawuppoints))[-1])
+;      ;          savedCoordinates = (value.coor).extractPoint( (*(peaks.rawuppoints))[-1] )
+;      ; Getting the first pusle of the segment
+;      savedIntensity = (value.int)((*(peaks.rawuppoints))[0])
+;      savedCoordinates = (value.coor).extractPoint( (*(peaks.rawuppoints))[0] )
+;
+;      ; Progressive result printing
+;      if flag eq 0 then begin
+;        x = savedCoordinates.x()
+;        y = savedCoordinates.y()
+;        z = savedCoordinates.z()
+;        i = savedIntensity
+;
+;        name = 'band_' + Strcompress(String(j), /remove_all) + '.csv'
+;        Openw, rLun, name, /get_lun
+;        Printf, rLun, x, y, z, i
+;        Close, rLun
+;
+;        flag += 1B
+;      endif else begin
+;        x = savedCoordinates.x()
+;        y = savedCoordinates.y()
+;        z = savedCoordinates.z()
+;        i = savedIntensity
+;
+;        name = 'band_' + Strcompress(String(j), /remove_all) + '.csv'
+;        Openw, rLun, name, /get_lun, /APPEND
+;        Printf, rLun, x, y, z, i
+;        Close, rLun
+;      endelse
+;
+;      ;             Concatenation for final print
+;      if flag eq 0 then begin
+;        x = savedCoordinates.x()
+;        y = savedCoordinates.y()
+;        z = savedCoordinates.z()
+;        i = savedIntensity
+;        flag += 1B
+;      endif else begin
+;        x = [x,savedCoordinates.x()]
+;        y = [y,savedCoordinates.y()]
+;        z = [z,savedCoordinates.z()]
+;        i = [i,savedIntensity]
+;      endelse
+;
+;    endif
+;
+  endif
+  ;########################################################
+
+
+  nLoop += 1UL
+Endwhile
+
 
 End
 

@@ -1,3 +1,7 @@
 *.swp
 
 *.sav
+
+data/corbin_ln5_sc1_test_reflectance_utm.pls
+
+data/corbin_ln5_sc1_test_reflectance_utm.wvs
