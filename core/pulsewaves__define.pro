@@ -1093,10 +1093,10 @@ End
 ;   MIN :
 ;     Set the boundingBox value as the minimum (cutoff) elevation value.
 ;     This is a required Keyword if the boundingBox has only one value.
-;   all : in, optional, type=boolean
+;   ALL : in, optional, type=boolean
 ;     If present, will return all the points of the PLS file.
-;   current : in, NOT IN USE NOW
-;   no_save : in, optional, type=boolean
+;   CURRENT : in, NOT IN USE NOW
+;   NO_SAVE : in, optional, type=boolean
 ;     if set, the pulseBlock is not store in the object data member, but it's return to the caller
 ;
 ;-
@@ -1127,6 +1127,7 @@ if Keyword_set(INDEX) then begin
       tempPulseData = self.initpulserecord()
       pulseData = replicate(tempPulseData, INDEX[1]-INDEX[0])
       Readu, getDataLun, pulseData
+      INDEX = [INDEX[0]:INDEX[1]]
     end
     
     N_elements(INDEX) gt 2: begin
@@ -1293,6 +1294,7 @@ if keyword_set(NO_SAVE) ne 1 then begin
   self.print,1,"Saving pulse data to object's data member..."
   self.plspulserec = ptr_new(pulseData)
   self.plspulseInd = ptr_new(index)
+  self.plspulseIndSel = ptr_new(index)
   Return, 1
   
 endif else begin
@@ -1348,18 +1350,20 @@ Function pulsewaves::readWaves, $
   
   self.printsep
     
-    nIndex = N_elements(*self.Plspulseindsel)
+    nIndex = N_elements(*(self.Plspulseindsel))
     
     case 1 of
       
       nIndex eq 1 : begin
         
             ; Need to get the wavefrom bytes offset
-            byteOffset = ((*self.plsPulseRec)[*self.Plspulseindsel]).waveOffset
+            byteOffset = (((*self.plsPulseRec)[0]).waveOffset)
+;            byteOffset = (((*self.plsPulseRec)[*(self.Plspulseindsel)]).waveOffset)
     
             ; Need to format the waveform data block based on Pulse Descriptor information
             ; Getting the pulse descriptor value
-            pDes = ((*self.plsPulseRec)[*self.Plspulseindsel]).pulseDesIndex
+            pDes = ((*self.plsPulseRec)[0]).pulseDesIndex
+;            pDes = ((*self.plsPulseRec)[*self.Plspulseindsel]).pulseDesIndex
             descriptorVal = (pDes AND '11111111'bb) + 200000
             
             ; Retreiving the corresponding VLR
@@ -1368,13 +1372,13 @@ Function pulsewaves::readWaves, $
             ; Because the pulse can be fragmented it might not be possible to read the pulse as a block
             ; Checking pulse descriptor for information
             
-            ; Reading the Number of Extra Waves Bytes" information
+            ; Reading the Number of Extra Waves Bytes information
             extraBytes = ((*vlr[1]).(0)).(3)
             movingTo = byteOffset + extraBytes
             ; Read the waveform block
             self.print, 1, "Waves block #" + Strcompress(string(*self.Plspulseindsel),/REMOVE_ALL) + " is located at byte " + Strcompress(string(movingTo),/REMOVE_ALL)
             self.printsep
-            Point_lun, getDataLun, byteOffset + extraBytes       
+            Point_lun, getDataLun, movingTo       
 
             ; Getting information for all the Sampling Records
             pulseType = ((*vlr[1]).(1)).(2)
@@ -1507,19 +1511,23 @@ Function pulsewaves::readWaves, $
                   
                   endif
                   
+                  tempPulseClass = waveformclass(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = (((*lut[1]).(1)).(1)), FORMATORIGIN = 1, MANUFACTURER = 1)
+                  
                   ; Saving pulse information into a structure that will be return
                   if p eq 0 then begin
                   
-                    n = pulseNumberSample
-                    tempPulse = waves
-                    tempDFA = dFAnchor
+;                    n = pulseNumberSample
+;                    tempPulse = waves
+;                    tempDFA = dFAnchor
+                     retPulse = tempPulseClass
                   
                   endif else begin
                   
-                    n = [n, pulseNumberSample]
-                    tempPulse = [tempPulse, waves]
-                    tempDFA = [tempDFA, dFAnchor]
-                    
+;                    n = [n, pulseNumberSample]
+;                    tempPulse = [tempPulse, waves]
+;                    tempDFA = [tempDFA, dFAnchor]
+                     retPulse = [retPulse, tempPulseClass] 
+                     
                   endelse
 
                 
@@ -1529,10 +1537,11 @@ Function pulsewaves::readWaves, $
                 
             endfor
             
-            returnPulse.n = ptr_new(n)
-            returnPulse.pulse = ptr_new(tempPulse)
-            returnPulse.durationFromAnchor = ptr_new(tempDFA)
-            returnPulse.lut = ptr_new( (((*lut[1]).(1)).(1)) )
+            
+;            returnPulse.n = ptr_new(n)
+;            returnPulse.pulse = ptr_new(tempPulse)
+;            returnPulse.durationFromAnchor = ptr_new(tempDFA)
+;            returnPulse.lut = ptr_new( (((*lut[1]).(1)).(1)) )
             
           end
              
@@ -1570,7 +1579,8 @@ Function pulsewaves::readWaves, $
 ;  self.wvsWaverec = ptr_new(pulseData)
 ;  self.wvsWaveInd = ptr_new(index)
   
-  Return, returnPulse
+  Return, retPulse
+;  Return, returnPulse
   
 End
 

@@ -231,8 +231,213 @@ Function pulsewavestools::plotWaves
 End
 
 
+; Function to remove duplicate point - when the signal saturate, return the mean x position
+Function pulsewavestools::removeDouble, wave, index
 
-Function pulsewavestools::extractPoints
+  temp = Abs( wave[index] - Shift(wave[index],-1))
+
+  tempIndex = Where(temp eq 0, /NULL)
+
+  if tempIndex ne !NULL then begin
+
+    newIndex = Bytarr(N_elements(index))
+    serie = 0
+    flagUp = 0
+    for i=0,N_elements(index)-2 do begin
+      Print, temp[i], temp[i+1]
+      Print, newIndex
+      if temp[i] eq temp[i+1] then begin
+        if flagUp eq 1 then serie = serie else serie += 1
+        ;        if flagUp eq 1 then newIndex[i] = serie else newIndex[i] = serie + 1
+        newIndex[i] = serie
+        flagUp = 1
+      endif else begin
+        if flagUp eq 1 then begin
+          newIndex[i] = serie
+          newIndex[i+1] = serie
+        endif
+        flagUp = 0
+      endelse
+
+    endfor
+
+
+
+    for j=1,serie do begin
+      f = Where(newIndex eq serie, count, complement = compIndex)
+      mid = Ceil( Total(index[f])/Float(count) )
+      if j eq 1 then indexToBe = mid else indexToBe = [indexToBe, mid]
+    endfor
+    z = Where(newIndex eq 0, nCount, /NULL)
+    if z ne !NULL then indexToBe = [indexToBe,index[z]]
+
+    ; one last round of regroupment
+    for k=0,N_elements(indexToBe)-2 do begin
+      if Abs(indexToBe[k]-indexToBe[k+1]) le 10 then begin
+        val = Ceil(Total(indexToBe[k]+indexToBe[k+1])/2.)
+      endif else val = indexToBe[k]
+      if k eq 0 then finalIndex = val else finalIndex = [finalIndex, val]
+
+    endfor
+
+  endif else finalIndex = index
+
+  Return, finalIndex
+
+End
+
+
+
+
+Function pulsewavestools::extractPoints, waveform, thres = thres, simplify = simplify, nosmooth = nosmooth, ADD_TAIL = ADD_TAIL
+
+  ;Catch, Error_status
+  ;
+  ;;This statement begins the error handler:
+  ;IF Error_status NE 0 THEN BEGIN
+  ;  return, !NULL
+  ;  Catch, /CANCEL
+  ;ENDIF
+
+  signalIndex = Where(waveform ge thres, /NULL)
+  if Keyword_set(ADD_TAIL) then begin
+    signalIndex = [signalIndex, signalIndex[-1]]
+    filterProfile = waveform[signalIndex]
+  endif else begin
+    filterProfile = waveform[signalIndex]
+  endelse
+
+  originFlag = 0
+  j = 0
+  if signalIndex ne !NULL then profileOffset = signalIndex[0] else profileOffset = 0
+
+  inflexionPoints = {$
+    rawDownPoints      : Ptr_new(!NULL), $
+    rawUpPoints        : Ptr_new(!NULL), $
+    secDownPoints      : Ptr_new(!NULL), $
+    secUpPoints        : Ptr_new(!NULL), $
+    n                  : Intarr(4) $
+  }
+
+  if N_elements(nosmooth) eq 1 then begin
+    savgolKernel=0
+    degree=0
+  endif else begin
+    savgolKernel=5
+    degree=4
+  endelse
+
+  if Size(filterProfile,/dimensions) gt (savgolKernel*2) then begin
+
+    ; Analysis of the profil to extract the points (define by the "point" variable)
+    ; Savitzky-Golay
+
+    if N_elements(nosmooth) eq 1 then begin
+      filterData=filterProfile
+    endif else begin
+      order=0
+      savgolFilter = savgol(savgolKernel, savgolKernel, order, 4)
+      filterData=Convol(filterProfile, savgolFilter*(factorial(order)/(1.0^order)),/edge_truncate)
+      filterData=Smooth(filterData,3,/edge_truncate)
+    endelse
+
+    mDhi=Max(filterProfile,mDhi_sub)                    ; extracting mDhi value for the profile
+
+    ; Computing points with the original curve
+
+    ori = filterData
+    xVal = Indgen(N_elements(filterData))
+    rs = Shift(filterData, 1)
+    ls = Shift(filterData, -1)
+    rx = Shift(xVal, 1)
+    lx = Shift(xVal, -1)
+    lv = Obj_new('vector2Darrayclass', (rx-xVal), (rs-ori))
+    rv = Obj_new('vector2Darrayclass', (lx-xVal), (ls-ori))
+    ;  lv = vector2Darrayclass((rx-xVal), (rs-ori))
+    ;  rv = vector2Darrayclass(lx-xVal, ls-ori)
+
+    downPoints = Where($
+      lv.x() le 0. and lv.y() ge 0. and rv.x() ge 0. and rv.y() ge 0., $
+      nDown, /NULL)
+    upPoints = Where($
+      lv.x() le 0. and lv.y() lt 0. and rv.x() ge 0. and rv.y() lt 0., $
+      nUp, /NULL)
+
+    if N_elements(simplify) eq 1 then begin
+      if nUp gt 3 then upPoints = self.removeDouble(filterProfile, upPoints)
+      if nDown gt 3 then downPoints = self.removeDouble(filterProfile, downPoints)
+    endif
+
+    if downPoints ne !NULL then inflexionPoints.Rawdownpoints = Ptr_new( (downPoints + profileOffset) )
+    if upPoints ne !NULL then inflexionPoints.Rawuppoints = Ptr_new( (upPoints + profileOffset) )
+
+    inflexionPoints.N[0] = N_elements(downPoints)
+    inflexionPoints.N[1] = N_elements(upPoints)
+
+    Obj_destroy, lv
+    Obj_destroy, rv
+    rs = !NULL
+    ls = !NULL
+    rx = !NULL
+    lx = !NULL
+    lv = !NULL
+    rv = !NULL
+
+    ; Computing points with the second derivative
+    if N_elements(nosmooth) eq 1 then begin
+      filterSecDeriv=filterProfile * 0.
+    endif else begin
+      order=2
+      savgolFilter = savgol(savgolKernel, savgolKernel, order, 4)
+      filterSecDeriv=Convol(filterProfile, savgolFilter*(factorial(order)/(1.0^order)),/edge_truncate)
+      filterSecDeriv=Smooth(filterSecDeriv,3,/edge_truncate)
+    endelse
+
+    ori = filterSecDeriv
+    xVal = Indgen(N_elements(filterSecDeriv))
+    rs = Shift(filterSecDeriv, 1)
+    ls = Shift(filterSecDeriv, -1)
+    rx = Shift(xVal, 1)
+    lx = Shift(xVal, -1)
+    lv = Obj_new('vector2Darrayclass', (rx-xVal), (rs-ori))
+    rv = Obj_new('vector2Darrayclass', lx-xVal, ls-ori)
+    ;  lv = vector2Darrayclass(rx-xVal, rs-ori)
+    ;  rv = vector2Darrayclass(lx-xVal, ls-ori)
+
+    downPoints = Where($
+      lv.x() le 0. and lv.y() ge 0. and rv.x() ge 0. and rv.y() ge 0., $
+      nDown, /NULL)
+    upPoints = Where($
+      lv.x() le 0. and lv.y() le 0. and rv.x() ge 0. and rv.y() le 0., $
+      nUp, /NULL)
+
+    if N_elements(simplify) eq 1 then begin
+      if nUp gt 3 then upPoints = self.removeDouble(filterProfile, upPoints)
+      if nDown gt 3 then downPoints = self.removeDouble(filterProfile, downPoints)
+    endif
+
+
+    if downPoints ne !NULL then inflexionPoints.Secdownpoints = Ptr_new( (downPoints + profileOffset) )
+    if upPoints ne !NULL then inflexionPoints.Secuppoints = Ptr_new( (upPoints + profileOffset) )
+
+    inflexionPoints.N[2] = nDown
+    inflexionPoints.N[3] = nUp
+
+    Obj_destroy, lv
+    Obj_destroy, rv
+    rs = !NULL
+    ls = !NULL
+    rx = !NULL
+    lx = !NULL
+    lv = !NULL
+    rv = !NULL
+
+  Endif else begin
+    Print, 'no points to return...'
+    Return, !NULL
+  Endelse
+  ;print, inflexionPoints.n
+  Return, inflexionPoints
 
 ; Setting some constants
 flag = 0B
