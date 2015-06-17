@@ -289,7 +289,7 @@ End
 
 
 
-Function pulsewavestools::extractPoints, waveform, thres = thres, simplify = simplify, nosmooth = nosmooth, ADD_TAIL = ADD_TAIL
+Function pulsewavestools::extractPoints, waveform, thres = thres, simplify = simplify, nosmooth = nosmooth, ADD_TAIL = ADD_TAIL,_EXTRA = EX
 
   ;Catch, Error_status
   ;

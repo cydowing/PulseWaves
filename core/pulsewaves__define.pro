@@ -1511,8 +1511,9 @@ Function pulsewaves::readWaves, $
                   
                   endif
                   
-                  tempPulseClass = waveformclass(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = (((*lut[1]).(1)).(1)), FORMATORIGIN = 1, MANUFACTURER = 1)
-                  
+;                  tempPulseClass = waveformclass(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = (((*lut[1]).(1)).(1)), FORMATORIGIN = 1, MANUFACTURER = 1)
+                  tempPulseClass = bywater(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = (((*lut[1]).(1)).(1)), FORMATORIGIN = 1, MANUFACTURER = 1)
+
                   ; Saving pulse information into a structure that will be return
                   if p eq 0 then begin
                   
