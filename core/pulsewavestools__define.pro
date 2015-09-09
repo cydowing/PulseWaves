@@ -173,8 +173,9 @@ Function pulsewavestools::computePulses, $
     if keyword_set(NO_PLOT) then returnWave = self->pulsewaves::readWaves(/NO_PLOT) else returnWave = self->pulsewaves::readWaves()
     
     if size(anchorPoint,/type) eq 11 and size(dirVec,/type) eq 11 then begin
-;        if strlowcase(obj_class(anchorPoint)) eq 'pointclass_sazerac' and strlowcase(obj_class(dirVec)) eq 'vectorclass' then $
-          self.plsRays = ptr_new(plsrayclass(anchorPoint, dirVec, returnWave)) ;else return, !NULL
+          tempRay = bywater(ORIGIN = anchorPoint, DIRECTION = dirVec, WAVE = returnWave)
+          self.plsRays = ptr_new(tempRay)
+          self.plsNRays = 1
         endif
  
 
@@ -563,6 +564,7 @@ Pro pulsewavestools__define
     plsAnchors    : ptr_new(),$         ; Pointer to a pointarrayclass_sazerac that holds the anchor points coordinates
     plsTargets    : ptr_new(),$         ; Pointer to a pointarrayclass_sazerac that holds the target points coordinates
     plsDir        : ptr_new(),$         ; Pointer to a vectorarrayclass that holds the direction of the pulses
+    plsNRays      : 0, $                ; Integer that represents the number of Bywater objects - One Bywater per segment
     plsRays       : ptr_new(),$         ; Pointer to a rayarrayclass that will holds the ray direction normilized
     plsTrajectory : ptr_new(),$         ; Pointer to an array (n,3) representing the trajectory of the optical center
     inherits pulsewaves $               ; Inherits from the pulsewaves to access pulsewaves file

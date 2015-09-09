@@ -1487,50 +1487,53 @@ Function pulsewaves::readWaves, $
                   
                   
                   Readu, getDataLun, waves
-                  
-                  if keyword_set(NO_PLOT) ne 1 then begin
-                    
-                    if p eq 0 then begin
-  ;                    if n_elements(waves) gt 1 then begin
-                      ;plt = plot((((*lut[2]).(1)).(1))[waves], color=self.colarray[self.plotFlag])
-                      newWave = (((*lut[1]).(1)).(1))[waves]
-                      plp = plot((where(newWave ne -2.000000e+037))+dFAnchor, newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag])
-  ;                      plp = plot(waves, color=(plotColor)[plotFlag])
-                      plotFlag += 1B
-  ;                    endif
-                    endif else begin
-                      ;                    pgt = plot((((*lut[2]).(1)).(1))[waves], color=(self.plotColor)[plotFlag], /OVERPLOT)
-  ;                    plt = plot((((*lut[1]).(1)).(1))[waves], color=(plotColor)[plotFlag], /OVERPLOT)
-                      
-                      newWave = (((*lut[1]).(1)).(1))[waves]
-                      plt = plot((where(newWave ne -2.000000e+037))+dFAnchor, newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag], /OVERPLOT)
-                      
-                      plotFlag += 1B
-                      
-                    endelse
-                  
-                  endif
-                  
-;                  tempPulseClass = waveformclass(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = (((*lut[1]).(1)).(1)), FORMATORIGIN = 1, MANUFACTURER = 1)
-                  tempPulseClass = bywater(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = (((*lut[1]).(1)).(1)), FORMATORIGIN = 1, MANUFACTURER = 1)
 
+                  
+                  tempPulseClass = waveformclass(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = (((*lut[1]).(1)).(1)), FORMATORIGIN = 2, MANUFACTURER = 1, SEGMENTNUMBER = p+1)
+                  
+                  if not keyword_set(NO_PLOT) then begin
+                    
+                       if p eq 0 then begin
+                          dum1 = tempPulseClass.plotwave()
+                       endif else begin
+                          dum2 = tempPulseClass.plotwave(/OVERPLOT)
+                       endelse
+                    
+                  endif
+                                    
+ 
+;+
+;                  if not keyword_set(NO_PLOT) then begin
+;
+;                    if p eq 0 then begin
+;  ;                    if n_elements(waves) gt 1 then begin
+;                      ;plt = plot((((*lut[2]).(1)).(1))[waves], color=self.colarray[self.plotFlag])
+;                      newWave = (((*lut[1]).(1)).(1))[waves]
+;                      plp = plot((where(newWave ne -2.000000e+037))+dFAnchor, newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag])
+;  ;                      plp = plot(waves, color=(plotColor)[plotFlag])
+;                      plotFlag += 1B
+;  ;                    endif
+;                    endif else begin
+;                      ;                    pgt = plot((((*lut[2]).(1)).(1))[waves], color=(self.plotColor)[plotFlag], /OVERPLOT)
+;  ;                    plt = plot((((*lut[1]).(1)).(1))[waves], color=(plotColor)[plotFlag], /OVERPLOT)
+;
+;                      newWave = (((*lut[1]).(1)).(1))[waves]
+;                      plt = plot((where(newWave ne -2.000000e+037))+dFAnchor, newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag], /OVERPLOT)
+;
+;                      plotFlag += 1B
+;
+;                    endelse
+;
+;                  endif
+;                  
+;-
+                  
                   ; Saving pulse information into a structure that will be return
                   if p eq 0 then begin
-                  
-;                    n = pulseNumberSample
-;                    tempPulse = waves
-;                    tempDFA = dFAnchor
                      retPulse = tempPulseClass
-                  
                   endif else begin
-                  
-;                    n = [n, pulseNumberSample]
-;                    tempPulse = [tempPulse, waves]
-;                    tempDFA = [tempDFA, dFAnchor]
                      retPulse = [retPulse, tempPulseClass] 
-                     
                   endelse
-
                 
                 self.printsep
                 
@@ -1548,11 +1551,9 @@ Function pulsewaves::readWaves, $
              
       nIndex eq 2 : begin
 
-
           end
            
      nIndex gt 2 : begin
-
 
           end
              
@@ -1576,12 +1577,12 @@ Function pulsewaves::readWaves, $
   
   free_lun, getDataLun, /FORCE
 ;  ; Updating data members
-;  self.print,1,"Linking wave data to object's data member..."
-;  self.wvsWaverec = ptr_new(pulseData)
+  self.print,1,"Linking wave data to object's data member..."
+  self.wvsWaverec = ptr_new(retPulse)
 ;  self.wvsWaveInd = ptr_new(index)
   
-  Return, retPulse
-;  Return, returnPulse
+  Return, *self.wvsWaverec
+
   
 End
 
