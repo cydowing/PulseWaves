@@ -667,6 +667,8 @@ self.print, 1, "Opening " + strcompress(self.plsFilePath, /REMOVE_ALL)
   ; Checking if the keyword NO_HEADER has been passed - if so, disable the printing
   if self.Bitnoprint and '00000001'bb eq 1 then dum = self.restoreMode()
   
+  free_lun, rLun
+  
   Return, 1
   
 endif else begin
@@ -674,7 +676,7 @@ endif else begin
   
 endelse
 
-
+ free_lun, rLun
 
 End
 
@@ -1343,7 +1345,7 @@ Function pulsewaves::readWaves, $
   plotColor = ["r","b","g","y"]
   plotFlag = 0B
   returnPulse = {returnPulse, n:ptr_new(), pulse:ptr_new(), durationFromAnchor:ptr_new(), lut:ptr_new()}
-  
+;  free_lun, getDataLun
   openr, getDataLun, self.wvsFilePath, /get_lun, /swap_if_big_endian
   ; Retriving the wave data packet
   plsStructure = self.initWaveRecord()
@@ -1500,33 +1502,6 @@ Function pulsewaves::readWaves, $
                        endelse
                     
                   endif
-                                    
- 
-;+
-;                  if not keyword_set(NO_PLOT) then begin
-;
-;                    if p eq 0 then begin
-;  ;                    if n_elements(waves) gt 1 then begin
-;                      ;plt = plot((((*lut[2]).(1)).(1))[waves], color=self.colarray[self.plotFlag])
-;                      newWave = (((*lut[1]).(1)).(1))[waves]
-;                      plp = plot((where(newWave ne -2.000000e+037))+dFAnchor, newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag])
-;  ;                      plp = plot(waves, color=(plotColor)[plotFlag])
-;                      plotFlag += 1B
-;  ;                    endif
-;                    endif else begin
-;                      ;                    pgt = plot((((*lut[2]).(1)).(1))[waves], color=(self.plotColor)[plotFlag], /OVERPLOT)
-;  ;                    plt = plot((((*lut[1]).(1)).(1))[waves], color=(plotColor)[plotFlag], /OVERPLOT)
-;
-;                      newWave = (((*lut[1]).(1)).(1))[waves]
-;                      plt = plot((where(newWave ne -2.000000e+037))+dFAnchor, newWave[where(newWave ne -2.000000e+037)], color=(plotColor)[plotFlag], /OVERPLOT)
-;
-;                      plotFlag += 1B
-;
-;                    endelse
-;
-;                  endif
-;                  
-;-
                   
                   ; Saving pulse information into a structure that will be return
                   if p eq 0 then begin
@@ -1540,12 +1515,6 @@ Function pulsewaves::readWaves, $
               endfor
                 
             endfor
-            
-            
-;            returnPulse.n = ptr_new(n)
-;            returnPulse.pulse = ptr_new(tempPulse)
-;            returnPulse.durationFromAnchor = ptr_new(tempDFA)
-;            returnPulse.lut = ptr_new( (((*lut[1]).(1)).(1)) )
             
           end
              
@@ -1574,8 +1543,10 @@ Function pulsewaves::readWaves, $
     self.print,1, strcompress("Loading Time :"+string(SYSTIME(1) - T) +' Seconds')
     
 
+  close, getDataLun 
+  free_lun, getDataLun, EXIT_STATUS=variable, /FORCE
+  print, getDataLun, variable
   
-  free_lun, getDataLun, /FORCE
 ;  ; Updating data members
   self.print,1,"Linking wave data to object's data member..."
   self.wvsWaverec = ptr_new(retPulse)
