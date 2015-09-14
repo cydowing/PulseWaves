@@ -156,7 +156,7 @@ Function pulsewavestools::computePulses, $
 
   ; If the direction vector(s) haven't been computed yet, then do it
   if *(self.plsDir) eq !NULL then begin
-    if keyword_set(unit) then direct = self.computeVectors(/UNIT) else $
+    if keyword_set(UNIT) then direct = self.computeVectors(/UNIT) else $
       direct = self.computeVectors()
   endif
     
@@ -164,6 +164,7 @@ Function pulsewavestools::computePulses, $
   ; one ray is created. If no keyword is set, then an array of ray is created     
   if keyword_set(INDEX) then begin
     
+    INDEX = INDEX - 1 
     anchorPoint = (*self.Plsanchors).extractPoint(INDEX)
     targetPoint = (*self.Plstargets).extractPoint(INDEX)
     dum = self.getPulses(INDEX)
@@ -288,6 +289,19 @@ Function pulsewavestools::removeDouble, wave, index
 End
 
 
+
+Function pulsewavestools::convertRawCoordinates, rcoor
+
+scale = self.getHeaderProperty(/XYZSCALE)
+offset = self.getHeaderProperty(/XYZOFFSET)
+tpX = (rcoor.x() * scale.x) + offset.x
+tpY = (rcoor.y() * scale.y) + offset.y
+tpZ = (rcoor.z() * scale.z) + offset.z
+
+Return, pointclass_sazerac(tpX, tpY, tpZ)
+
+
+End
 
 
 Function pulsewavestools::extractPoints, waveform, thres = thres, simplify = simplify, nosmooth = nosmooth, ADD_TAIL = ADD_TAIL,_EXTRA = EX

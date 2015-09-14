@@ -1359,13 +1359,13 @@ Function pulsewaves::readWaves, $
       nIndex eq 1 : begin
         
             ; Need to get the wavefrom bytes offset
-            byteOffset = (((*self.plsPulseRec)[0]).waveOffset)
-;            byteOffset = (((*self.plsPulseRec)[*(self.Plspulseindsel)]).waveOffset)
+;            byteOffset = (((*self.plsPulseRec)[0]).waveOffset)
+            byteOffset = (((*self.plsPulseRec)[*(self.Plspulseindsel)]).waveOffset)
     
             ; Need to format the waveform data block based on Pulse Descriptor information
             ; Getting the pulse descriptor value
-            pDes = ((*self.plsPulseRec)[0]).pulseDesIndex
-;            pDes = ((*self.plsPulseRec)[*self.Plspulseindsel]).pulseDesIndex
+;            pDes = ((*self.plsPulseRec)[0]).pulseDesIndex
+            pDes = ((*self.plsPulseRec)[*self.Plspulseindsel]).pulseDesIndex
             descriptorVal = (pDes AND '11111111'bb) + 200000
             
             ; Retreiving the corresponding VLR
