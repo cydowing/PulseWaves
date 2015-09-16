@@ -1545,7 +1545,7 @@ Function pulsewaves::readWaves, $
 
   close, getDataLun 
   free_lun, getDataLun, EXIT_STATUS=variable, /FORCE
-  print, getDataLun, variable
+;  print, getDataLun, variable
   
 ;  ; Updating data members
   self.print,1,"Linking wave data to object's data member..."
