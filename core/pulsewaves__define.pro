@@ -653,16 +653,21 @@ self.print, 1, "Opening " + strcompress(self.plsFilePath, /REMOVE_ALL)
 
   self.print,1,"The associated waveform file is " + strcompress(self.wvsFilePath, /REMOVE_ALL)
   self.print,1, "Reading Header of the associated Waves file..."
-  ; Open the file
-  Openr, rLun, self.wvsFilePath, /swap_if_big_endian, /get_lun
-  self.wvsHeader = ptr_new(self.initwvsheader())
-  Readu, rLun, (*self.wvsHeader)
-  if String((*self.wvsHeader).signature) eq 'PulseWavesWaves' then self.print, 1, "Header's signature is valid..." else begin
-    self.print, 2, "Header' signature is invalid !"
+  if file_test(self.wvsFilePath) then begin
+    ; Open the file
+    Openr, rLun, self.wvsFilePath, /swap_if_big_endian, /get_lun
+    self.wvsHeader = ptr_new(self.initwvsheader())
+    Readu, rLun, (*self.wvsHeader)
+    if String((*self.wvsHeader).signature) eq 'PulseWavesWaves' then self.print, 1, "Header's signature is valid..." else begin
+      self.print, 2, "Header' signature is invalid !"
+    endelse
+    if (*self.wvsHeader).compression eq 1 then self.print, 1, "Waveforms are compressed..." else self.print, 1, "Waveforms are not compressed..."
+    self.print,1, "Header read and stored..."
+    self.printsep
+  endif else begin
+    self.print, 2, "Associated Waves file not found!"
+    self.print, 2, "Skipping this part but you won't be able to do anything interesting..."
   endelse
-  if (*self.wvsHeader).compression eq 1 then self.print, 1, "Waveforms are compressed..." else self.print, 1, "Waveforms are not compressed..."
-  self.print,1, "Header read and stored..."
-  self.printsep
   
   ; Checking if the keyword NO_HEADER has been passed - if so, disable the printing
   if self.Bitnoprint and '00000001'bb eq 1 then dum = self.restoreMode()
