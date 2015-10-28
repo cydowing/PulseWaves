@@ -1672,6 +1672,7 @@ End
 
 Function pulsewaves::getHeaderProperty, $
   ALL = ALL,$
+  SYSTEMID = SYSTEMID, $
   HEADERSIZE = HEADERSIZE,$
   OFFSETPULSE = OFFSETPULSE,$
   NPULSES = NPULSES,$
@@ -1698,6 +1699,7 @@ Function pulsewaves::getHeaderProperty, $
   BOUNDINGBOX = BOUNDINGBOX
 
 if keyword_set(ALL) then return, (*self.plsHeader)
+if keyword_set(SYSTEMID) then return, string( (*self.plsHeader).systemID)
 if keyword_set(HEADERSIZE) then return, (*self.plsHeader).headersize
 if keyword_set(OFFSETPULSE) then return, (*self.plsHeader).offsetpulse
 if keyword_set(NPULSES) then return, (*self.plsHeader).npulses
