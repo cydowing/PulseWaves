@@ -1339,7 +1339,8 @@ End
 ;
 ;-
 Function pulsewaves::readWaves, $
-                        NO_PLOT = NO_PLOT
+                        NO_PLOT = NO_PLOT, $
+                        _REF_EXTRA = ex
 
 ;  close, getDataLun, /FORCE
   
@@ -1495,6 +1496,7 @@ Function pulsewaves::readWaves, $
                   
                   Readu, getDataLun, waves
 
+                  ; TODO: Formating the _REF_EXTRA = ex information passed on by other function
                   
                   tempPulseClass = waveformclass(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = (((*lut[1]).(1)).(1)), FORMATORIGIN = 2, MANUFACTURER = 1, SEGMENTNUMBER = p+1)
                   
