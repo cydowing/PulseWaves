@@ -1510,6 +1510,7 @@ Function pulsewaves::readWaves, $
                     else: waves = bytarr(pulseNumberSample)
                   endcase
                   
+                  Readu, getDataLun, waves
                   
                   self.print, 1, "Reading Waves of Segment #" + Strcompress(String(seg+1),/REMOVE_ALL) + " of Sampling #" + Strcompress(String(p+1),/REMOVE_ALL)
                   
@@ -1523,11 +1524,15 @@ Function pulsewaves::readWaves, $
                   ;            amplitude conversion table for high channel
                   
                   ; check here is the LUT is present, if not, then just create a fake one full of 1's
-                  if size(LUT, /TYPE) eq 0 then newLUT = intarr(pulseNumberSample)+1 else newLUT = (((*lut[1]).(1)).(1))
-                  
-                  Readu, getDataLun, waves
+                  if size(LUT, /TYPE) eq 0 then begin
+                    case 1 of
+                      plsBtNSam[p] eq 8: newLUT = indgen(256, /BYTE)
+                      plsBtNSam[p] eq 16: newLUT = indgen(65535, /UINT)
+                      plsBtNSam[p] eq 32: newLUT = indgen(4294967296, /ULONG)
+                      else: 
+                    endcase
+                  endif else newLUT = (((*lut[1]).(1)).(1))
 
-                  ; TODO: Formating the _REF_EXTRA = ex information passed on by other function
                   ; Check if something has been pass to ex if so set up the correct values
                   if size(ex, /TYPE) eq 0 then begin
                     FTON = self.Forigin
@@ -1536,6 +1541,7 @@ Function pulsewaves::readWaves, $
                     FTON = ex.FORMATORIGIN
                     MFTR = ex.MANUFACTURER
                   endelse
+                  
 ;                  tempPulseClass = waveformclass(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = (((*lut[1]).(1)).(1)), FORMATORIGIN = FTON, MANUFACTURER = MFTR, SEGMENTNUMBER = p+1)
                   tempPulseClass = waveformclass(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = newLUT, FORMATORIGIN = FTON, MANUFACTURER = MFTR, SEGMENTNUMBER = p+1)
 
