@@ -161,6 +161,28 @@ Function pulsewaves::init, INPUTFILE = FILE, $
   
   close, /ALL
  
+  sysIdString = self.getHeaderProperty(/SYSTEMID)
+  
+  case 1 of 
+    
+    STRMATCH(sysIdString, 'riprocess*', /FOLD_CASE): begin
+      ; Pulsewaves & Riegl : FORMATORIGIN = 2, MANUFACTURER = 1
+      self.FORIGIN = 2
+      self.MANUTER = 1
+    end
+  
+    STRMATCH(sysIdString, 'optechlms*', /FOLD_CASE): begin
+      ; Pulsewaves & Riegl : FORMATORIGIN = 2, MANUFACTURER = 2
+      self.FORIGIN = 2
+      self.MANUTER = 2
+    end
+  
+    else: begin
+      self.FORIGIN = 2
+      self.MANUTER = 2
+    end
+
+endcase
   
   return, 1
   
@@ -1340,7 +1362,7 @@ End
 ;-
 Function pulsewaves::readWaves, $
                         NO_PLOT = NO_PLOT, $
-                        _REF_EXTRA = ex
+                        _EXTRA = ex
 
 ;  close, getDataLun, /FORCE
   
@@ -1500,13 +1522,23 @@ Function pulsewaves::readWaves, $
                   ;            IDL> String((((*lut[3]).(1)).(0)).(7))
                   ;            amplitude conversion table for high channel
                   
+                  ; check here is the LUT is present, if not, then just create a fake one full of 1's
+                  if size(LUT, /TYPE) eq 0 then newLUT = intarr(pulseNumberSample)+1 else newLUT = (((*lut[1]).(1)).(1))
                   
                   Readu, getDataLun, waves
 
                   ; TODO: Formating the _REF_EXTRA = ex information passed on by other function
-                  
-                  tempPulseClass = waveformclass(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = (((*lut[1]).(1)).(1)), FORMATORIGIN = 2, MANUFACTURER = 1, SEGMENTNUMBER = p+1)
-                  
+                  ; Check if something has been pass to ex if so set up the correct values
+                  if size(ex, /TYPE) eq 0 then begin
+                    FTON = self.Forigin
+                    MFTR = self.Manuter
+                  endif else begin
+                    FTON = ex.FORMATORIGIN
+                    MFTR = ex.MANUFACTURER
+                  endelse
+;                  tempPulseClass = waveformclass(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = (((*lut[1]).(1)).(1)), FORMATORIGIN = FTON, MANUFACTURER = MFTR, SEGMENTNUMBER = p+1)
+                  tempPulseClass = waveformclass(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = newLUT, FORMATORIGIN = FTON, MANUFACTURER = MFTR, SEGMENTNUMBER = p+1)
+
                   if not keyword_set(NO_PLOT) then begin
                     
                        if p eq 0 then begin
@@ -1940,7 +1972,7 @@ Function pulsewaves::getVlRecords, INDEX = INDEX, RECORDID = RECORDID
     
   endif
   
-  Return, *self.plsvlrarray
+  Return, !NULL
   
 End
 
@@ -2019,6 +2051,8 @@ Pro pulsewaves__define
     plotColor     : strarr(4),$         ; String array containing the color index for the plot of the waves
     bitNoPrint    : 0B,$                ; Byte that specify if the print out of the HEADER/VLR/AVLR is enable or disable
     plotFlag      : 0B,$                ; A bit to count how many segment have been  plot
+    Forigin       : 0B, $               ; A bit that represents the format of the waveform
+    Manuter       : 0B, $               ; Bit that represents the manufacturer of the waveform
     inherits consoleclass $             ; Inherits from the consoleclass for formatted console and log ouptut
   }
 
