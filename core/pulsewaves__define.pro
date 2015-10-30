@@ -1419,6 +1419,7 @@ Function pulsewaves::readWaves, $
             plsBtNSam = ((*vlr[1]).(1)).(9)
             pulseNSeg = ((*vlr[1]).(1)).(10)
             pulseNSam = ((*vlr[1]).(1)).(11)
+            bitsPerSample = ((*vlr[1]).(1)).(12)
             pulseLUTN = ((*vlr[1]).(1)).(13)
             nSampling = N_elements(pulseType)
             self.printsep
@@ -1504,9 +1505,9 @@ Function pulsewaves::readWaves, $
 
                   ; formating the waves array based on the data type and reading the waves
                   case 1 of
-                    plsBtNSam[p] eq 8: waves = bytarr(pulseNumberSample)
-                    plsBtNSam[p] eq 16: waves = intarr(pulseNumberSample)
-                    plsBtNSam[p] eq 32: waves = lonarr(pulseNumberSample)
+                    bitsPerSample[p] eq 8: waves = bytarr(pulseNumberSample)
+                    bitsPerSample[p] eq 16: waves = intarr(pulseNumberSample)
+                    bitsPerSample[p] eq 32: waves = lonarr(pulseNumberSample)
                     else: waves = bytarr(pulseNumberSample)
                   endcase
                   
@@ -1526,9 +1527,9 @@ Function pulsewaves::readWaves, $
                   ; check here is the LUT is present, if not, then just create a fake one full of 1's
                   if size(LUT, /TYPE) eq 0 then begin
                     case 1 of
-                      plsBtNSam[p] eq 8: newLUT = indgen(256, /BYTE)
-                      plsBtNSam[p] eq 16: newLUT = indgen(65535, /UINT)
-                      plsBtNSam[p] eq 32: newLUT = indgen(4294967296, /ULONG)
+                      bitsPerSample[p] eq 8: newLUT = indgen(256, /BYTE)
+                      bitsPerSample[p] eq 16: newLUT = indgen(65535, /UINT)
+                      bitsPerSample[p] eq 32: newLUT = indgen(4294967296, /ULONG)
                       else: 
                     endcase
                   endif else newLUT = (((*lut[1]).(1)).(1))
