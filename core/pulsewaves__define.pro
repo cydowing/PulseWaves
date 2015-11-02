@@ -1513,17 +1513,6 @@ Function pulsewaves::readWaves, $
                   
                   Readu, getDataLun, waves
                   
-<<<<<<< HEAD
-                  ; formating the waves array based on the data type and reading the waves
-                  case 1 of
-                    plsBtNSam[p] eq 8: waves = bytarr(pulseNumberSample)
-                    plsBtNSam[p] eq 16: waves = intarr(pulseNumberSample)
-                    plsBtNSam[p] eq 32: waves = lonarr(pulseNumberSample)
-                    else: waves = bytarr(pulseNumberSample)
-                  endcase
-                  
-=======
->>>>>>> master
                   self.print, 1, "Reading Waves of Segment #" + Strcompress(String(seg+1),/REMOVE_ALL) + " of Sampling #" + Strcompress(String(p+1),/REMOVE_ALL)
                   
                   ; Getting the lookup table in VLR
