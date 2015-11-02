@@ -161,6 +161,28 @@ Function pulsewaves::init, INPUTFILE = FILE, $
   
   close, /ALL
  
+  sysIdString = self.getHeaderProperty(/SYSTEMID)
+  
+  case 1 of 
+    
+    STRMATCH(sysIdString, 'riprocess*', /FOLD_CASE): begin
+      ; Pulsewaves & Riegl : FORMATORIGIN = 2, MANUFACTURER = 1
+      self.FORIGIN = 2
+      self.MANUTER = 1
+    end
+  
+    STRMATCH(sysIdString, 'optechlms*', /FOLD_CASE): begin
+      ; Pulsewaves & Riegl : FORMATORIGIN = 2, MANUFACTURER = 2
+      self.FORIGIN = 2
+      self.MANUTER = 2
+    end
+  
+    else: begin
+      self.FORIGIN = 2
+      self.MANUTER = 2
+    end
+
+endcase
   
   return, 1
   
@@ -1339,7 +1361,8 @@ End
 ;
 ;-
 Function pulsewaves::readWaves, $
-                        NO_PLOT = NO_PLOT
+                        NO_PLOT = NO_PLOT, $
+                        _EXTRA = ex
 
 ;  close, getDataLun, /FORCE
   
@@ -1396,6 +1419,7 @@ Function pulsewaves::readWaves, $
             plsBtNSam = ((*vlr[1]).(1)).(9)
             pulseNSeg = ((*vlr[1]).(1)).(10)
             pulseNSam = ((*vlr[1]).(1)).(11)
+            bitsPerSample = ((*vlr[1]).(1)).(12)
             pulseLUTN = ((*vlr[1]).(1)).(13)
             nSampling = N_elements(pulseType)
             self.printsep
@@ -1478,7 +1502,18 @@ Function pulsewaves::readWaves, $
                     self.print, 1, "Number of samples in Segment #" + Strcompress(String(seg+1),/REMOVE_ALL) + " of Sampling #" + Strcompress(String(p+1),/REMOVE_ALL) + ": " + Strcompress(string(pulseNumberSample),/REMOVE_ALL)
                     
                   endelse
+
+                  ; formating the waves array based on the data type and reading the waves
+                  case 1 of
+                    bitsPerSample[p] eq 8: waves = bytarr(pulseNumberSample)
+                    bitsPerSample[p] eq 16: waves = intarr(pulseNumberSample)
+                    bitsPerSample[p] eq 32: waves = lonarr(pulseNumberSample)
+                    else: waves = bytarr(pulseNumberSample)
+                  endcase
                   
+                  Readu, getDataLun, waves
+                  
+<<<<<<< HEAD
                   ; formating the waves array based on the data type and reading the waves
                   case 1 of
                     plsBtNSam[p] eq 8: waves = bytarr(pulseNumberSample)
@@ -1487,6 +1522,8 @@ Function pulsewaves::readWaves, $
                     else: waves = bytarr(pulseNumberSample)
                   endcase
                   
+=======
+>>>>>>> master
                   self.print, 1, "Reading Waves of Segment #" + Strcompress(String(seg+1),/REMOVE_ALL) + " of Sampling #" + Strcompress(String(p+1),/REMOVE_ALL)
                   
                   ; Getting the lookup table in VLR
@@ -1498,12 +1535,28 @@ Function pulsewaves::readWaves, $
                   ;            IDL> String((((*lut[3]).(1)).(0)).(7))
                   ;            amplitude conversion table for high channel
                   
-                  
-                  Readu, getDataLun, waves
+                  ; check here is the LUT is present, if not, then just create a fake one full of 1's
+                  if size(LUT, /TYPE) eq 0 then begin
+                    case 1 of
+                      bitsPerSample[p] eq 8: newLUT = indgen(256, /BYTE)
+                      bitsPerSample[p] eq 16: newLUT = indgen(65535, /UINT)
+                      bitsPerSample[p] eq 32: newLUT = indgen(4294967296, /ULONG)
+                      else: 
+                    endcase
+                  endif else newLUT = (((*lut[1]).(1)).(1))
 
+                  ; Check if something has been pass to ex if so set up the correct values
+                  if size(ex, /TYPE) eq 0 then begin
+                    FTON = self.Forigin
+                    MFTR = self.Manuter
+                  endif else begin
+                    FTON = ex.FORMATORIGIN
+                    MFTR = ex.MANUFACTURER
+                  endelse
                   
-                  tempPulseClass = waveformclass(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = (((*lut[1]).(1)).(1)), FORMATORIGIN = 2, MANUFACTURER = 1, SEGMENTNUMBER = p+1)
-                  
+;                  tempPulseClass = waveformclass(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = (((*lut[1]).(1)).(1)), FORMATORIGIN = FTON, MANUFACTURER = MFTR, SEGMENTNUMBER = p+1)
+                  tempPulseClass = waveformclass(WAVE=waves, NSAMPLES = pulseNumberSample, DFA = dFAnchor, LUT = newLUT, FORMATORIGIN = FTON, MANUFACTURER = MFTR, SEGMENTNUMBER = p+1)
+
                   if not keyword_set(NO_PLOT) then begin
                     
                        if p eq 0 then begin
@@ -1676,6 +1729,7 @@ End
 
 Function pulsewaves::getHeaderProperty, $
   ALL = ALL,$
+  SYSTEMID = SYSTEMID, $
   HEADERSIZE = HEADERSIZE,$
   OFFSETPULSE = OFFSETPULSE,$
   NPULSES = NPULSES,$
@@ -1702,6 +1756,7 @@ Function pulsewaves::getHeaderProperty, $
   BOUNDINGBOX = BOUNDINGBOX
 
 if keyword_set(ALL) then return, (*self.plsHeader)
+if keyword_set(SYSTEMID) then return, string( (*self.plsHeader).systemID)
 if keyword_set(HEADERSIZE) then return, (*self.plsHeader).headersize
 if keyword_set(OFFSETPULSE) then return, (*self.plsHeader).offsetpulse
 if keyword_set(NPULSES) then return, (*self.plsHeader).npulses
@@ -1935,7 +1990,7 @@ Function pulsewaves::getVlRecords, INDEX = INDEX, RECORDID = RECORDID
     
   endif
   
-  Return, *self.plsvlrarray
+  Return, !NULL
   
 End
 
@@ -2014,6 +2069,8 @@ Pro pulsewaves__define
     plotColor     : strarr(4),$         ; String array containing the color index for the plot of the waves
     bitNoPrint    : 0B,$                ; Byte that specify if the print out of the HEADER/VLR/AVLR is enable or disable
     plotFlag      : 0B,$                ; A bit to count how many segment have been  plot
+    Forigin       : 0B, $               ; A bit that represents the format of the waveform
+    Manuter       : 0B, $               ; Bit that represents the manufacturer of the waveform
     inherits consoleclass $             ; Inherits from the consoleclass for formatted console and log ouptut
   }
 
