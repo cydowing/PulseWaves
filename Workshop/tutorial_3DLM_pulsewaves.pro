@@ -7,8 +7,9 @@ Pro tutorial_3DLM_pulsewaves
   
   ; gettting info from the object, 
   ; pulse 230 -> 1 outgoing sampling, 1 return sampling 
-  ; pulse 2456 -> 1 outgoing sampling, 2 return samplings
-  pulse = plsObj.getPulses(2456)
+  ; pulse 2456 -> 1 outgoing sampling, 2 x LP return samplings
+  ; pulse 13426 -> 1 outgoing sampling, 1 x LP return sampling, 1 x HP return sampling
+  pulse = plsObj.getPulses(13426)
   waves = plsObj.readWaves(/NO_PLOT)
   help, waves
   
@@ -58,7 +59,11 @@ Pro tutorial_3DLM_pulsewaves
 ;  dum = plsObj.toPointsCloud(/SIMPLE, /CSV)
 ;
 ;  ; generate rasters from epc files - we generate all the raster within one command - but can be split-up into multiple commands
-;  dum = plsObj.toRaster(/INTENSITYOUT, /INTENSITYIN, /ELEVATION, /RANGE, /SACNANGLE)
+;  dum = plsObj.toRaster(/INTENSITYOUT)
+;  dum = plsObj.toRaster(/INTENSITYIN)
+;  dum = plsObj.toRaster(/ELEVATION)
+;  dum = plsObj.toRaster(/RANGE)
+;  dum = plsObj.toRaster(/SCANANGLE)
 ;  
 ;  ; extract trajectory
 ;  dum = plsObj.toVector(/TRAJECTORY)
