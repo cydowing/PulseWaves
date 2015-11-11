@@ -50,24 +50,35 @@ Pro tutorial_3DLM_pulsewaves
     dum = wave.plotwave(/POINTSOVERPLOT)
     
     
-  ; destroying object
-
+   ; destroying object
+   obj_destroy, plsObj
+   
+   
  
-;  ; AUTOMATIC PROCESSING OF THE FILES
-;
-;  ; converting pls/wvs files into a points cloud
-;  dum = plsObj.toPointsCloud(/SIMPLE, /CSV)
-;
-;  ; generate rasters from epc files - we generate all the raster within one command - but can be split-up into multiple commands
-;  dum = plsObj.toRaster(/INTENSITYOUT)
-;  dum = plsObj.toRaster(/INTENSITYIN)
-;  dum = plsObj.toRaster(/ELEVATION)
-;  dum = plsObj.toRaster(/RANGE)
-;  dum = plsObj.toRaster(/SCANANGLE)
-;  
-;  ; extract trajectory
-;  dum = plsObj.toVector(/TRAJECTORY)
+  ; AUTOMATIC PROCESSING OF THE FILES
 
+  ; converting pls/wvs files into a points cloud
+  dum = plsObj.toPointsCloud(/SIMPLE, /LAS, /CSV)
+
+  ; generate rasters from epc files - we generate all the raster within one command - but can be split-up into multiple commands
+  dum = plsObj.toRaster(/INTENSITYOUT)
+  dum = plsObj.toRaster(/INTENSITYIN)
+  dum = plsObj.toRaster(/ELEVATION)
+  dum = plsObj.toRaster(/RANGE)
+  dum = plsObj.toRaster(/SCANANGLE)
+
+  dum = plsObj.toRaster(/INTENSITYOUT, /INTENSITYIN, /ELEVATION, /RANGE, /SCANANGLE)
+  
+  ; extract trajectory
+  dum = plsObj.toVector(/TRAJECTORY, /CSV)
+
+
+;filelist = file_search('F:\Bertholdstein\q??0','*.pls',count=nFiles)
+;for i = 0, nFiles-1 do begin
+;  plsobj = pulsewavestools(inputfile = fileList[i])
+;  dum = plsObj.toPointsCloud(/SIMPLE, /CSV)
+;  obj_destroy, plsObj
+;endfor
 
 
 
