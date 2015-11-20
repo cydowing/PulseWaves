@@ -1104,13 +1104,14 @@ End
 ;     Result = plsObj->readPulses(BOUNDINGBOX=geoBox)
 ;
 ; :Keywords:
-;   boundingBox : in, optional, type=dblarr(6)
+;   BOUNDINGBOX : in, optional, type=dblarr(6)
 ;     Geographical limit to filter the data. It can be Easting and/or Northing and/or Elevation values.
 ;     The array need to be of one of the following format:
 ;       [xMax, xMin, yMax, yMin, zMax, zMin] or, [xMax, xMin, yMax, yMin]
 ;       [xMax, xMin], /XBOUND or [yMax, yMin], /YBOUND or [zMax, zMin], /ZBOUND
 ;       [zMax], /MAX, or [zMin], /MIN
-;       
+;   BETAPOINTSCLOUD : in, optional, type=bool
+;     if setup, then a raw lastreturn points cloud is compute as used a base for geographic filtering   
 ;   INDEX : in, optional, type=long
 ;     INDEX can be either one point index (long) and range of continuous points [pointMinIndex, pointMaxIndex],
 ;     or a collection of discrete points lonarr(n).
@@ -1130,7 +1131,7 @@ End
 ;
 ;-
 Function pulsewaves::readPulses, INDEX = INDEX, CURRENT = CURRENT, ALL=ALL, $
-            BOUNDINGBOX = BOUNDINGBOX, $
+            BOUNDINGBOX = BOUNDINGBOX, BETAPOINTSCLOUD = BETAPOINTSCLOUD, $
             XBOUND = XBOUND, YBOUND = YBOUND, ZBOUND = ZBOUND, $
             MAX = MAX, MIN = MIN, $
             OUTPUTID = OUTPUTID, $
@@ -1194,14 +1195,20 @@ endif
 ; If the keyword BOUNDING box is pass
 if keyword_set(BOUNDINGBOX) then begin
   
-  ; Checking is the data has been loaded already
- ; print,(*self.plsPulseRec)
-  pulseBlock = self.readPulses(/ALL, /NO_SAVE)
-  ;if self.plsPulseRec eq !NULL then pulseBlock = self.readPulses(/ALL, /NO_SAVE) else pulseBlock = *self.plsPulseRec
-  
-  x = ( pulseBlock.anchorX * (*self.plsheader).xscale ) + (*self.plsheader).xoffset 
-  y = ( pulseBlock.anchorY * (*self.plsheader).yscale ) + (*self.plsheader).yoffset 
-  z = ( pulseBlock.anchorZ * (*self.plsheader).zscale ) + (*self.plsheader).zoffset 
+  if keyword_set(BETAPOINTSCLOUD) then begin
+    tpc = self.getRawCoordinates(/LASTRETURN)
+    x = tpc.x()
+    y = tpc.y()
+    z = tpc.z()
+  endif else begin
+    ; Checking is the data has been loaded already
+    if not ptr_valid(self.plsPulseRec) then pulseBlock = self.readPulses(/ALL) else pulseBlock = self.readPulses(/ALL, /NO_SAVE)
+    ;if self.plsPulseRec eq !NULL then pulseBlock = self.readPulses(/ALL, /NO_SAVE) else pulseBlock = *self.plsPulseRec
+    x = ( pulseBlock.anchorX * (*self.plsheader).xscale ) + (*self.plsheader).xoffset
+    y = ( pulseBlock.anchorY * (*self.plsheader).yscale ) + (*self.plsheader).yoffset
+    z = ( pulseBlock.anchorZ * (*self.plsheader).zscale ) + (*self.plsheader).zoffset
+  endelse
+ 
   
   ; Determining the size of the boundingbox
   nbbox = n_elements(BOUNDINGBOX)
@@ -1316,6 +1323,7 @@ endif
 self.print,1, Strcompress("Time :"+String(Systime(1) - T) +' Seconds')
 
 free_lun, getDataLun
+
 ; Updating data members - if NO_SAVE keyword not set
 ; If NO_SAVE is set, then the function will return the array of structure pulseData
 if keyword_set(NO_SAVE) ne 1 then begin
@@ -1895,10 +1903,55 @@ End
 
 
 
-Function pulsewaves::getCoordinates
+Function pulsewaves::getRawCoordinates, $
+                     FIRSTRETURN = FIRSTRETURN, $
+                     LASTRETURN = LASTRETURN
   
+  if not ptr_valid(self.plsPulseRec) then begin
+    self.print, 3, "No records loaded in the object data member..."
+    self.print, 2, "Load some record(s) using pulsewaves::readPulses()..."
+    Return, 0
+  endif
   
-
+  ; creating the anchor points array
+  anchPoints = pointarrayclass_sazerac(((*self.plsPulseRec).anchorx),((*self.plsPulseRec).anchory),((*self.plsPulseRec).anchorz))
+  ; Creating the direction vectors array
+  dirVec = vectorarrayclass($
+    ((*self.plsPulseRec).targetx) - ((*self.plsPulseRec).anchorx), $
+    ((*self.plsPulseRec).targety) - ((*self.plsPulseRec).anchory), $
+    ((*self.plsPulseRec).targetz) - ((*self.plsPulseRec).anchorz)  $
+    )
+  ; normalize the length of the dir vectors
+  dum =  dirVec.normalizeLengthBy(1000.)
+  
+  if keyword_set(FIRSTRETURN) then begin
+  ; computing the coordinates of the lastReturn
+  betaPointsCloud = pointarrayclass_sazerac($
+    ((*self.plsPulseRec).anchorx) + ((*self.plsPulseRec).firstreturn) * dirVec.x(), $
+    ((*self.plsPulseRec).anchory) + ((*self.plsPulseRec).firstreturn) * dirVec.y(), $
+    ((*self.plsPulseRec).anchorz) + ((*self.plsPulseRec).firstreturn) * dirVec.z()  $
+    )
+  endif
+  
+  if keyword_set(LASTRETURN) then begin
+    ; computing the coordinates of the lastReturn
+    betaPointsCloud = pointarrayclass_sazerac($
+      ((*self.plsPulseRec).anchorx) + ((*self.plsPulseRec).lastreturn) * dirVec.x(), $
+      ((*self.plsPulseRec).anchory) + ((*self.plsPulseRec).lastreturn) * dirVec.y(), $
+      ((*self.plsPulseRec).anchorz) + ((*self.plsPulseRec).lastreturn) * dirVec.z()  $
+      )
+  endif
+  
+  ; getting scale and offset factors
+  xyzScale = vectorclass(self.getHeaderProperty(/XSCALE),self.getHeaderProperty(/YSCALE),self.getHeaderProperty(/ZSCALE))
+  xyzOffset = vectorclass(self.getHeaderProperty(/XOFFSET),self.getHeaderProperty(/YOFFSET),self.getHeaderProperty(/ZOFFSET))
+  
+  ; applying scale and offset to points cloud
+  dum = betaPointsCloud.multiVector(xyzScale)
+  dum = betaPointsCloud.addVector(xyzOffset)
+  
+  return, betaPointsCloud
+  
 End
 
 
