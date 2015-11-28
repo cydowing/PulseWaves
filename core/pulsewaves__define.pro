@@ -1883,7 +1883,7 @@ End
 ;   April 2014
 ;    - Adding index support
 ;    
-; :Author: antoine
+; :Author: Antoine Cottin
 ;-
 Function pulsewaves::getWaves, index
 
@@ -1903,6 +1903,27 @@ End
 
 
 
+;+
+; :Description:
+;    This procedure extract a raw points cloud constituted by either the first or last return
+;    or the waveform. It's meant for filtering purpose or to get a general idea of the coverage
+;    of the data
+;
+; :Return:
+;    The function will return a pointarrayclass object
+;
+; :Keywords:
+;    FIRSTRETURN: in, optional, type: boolean
+;     if setup then use the first return of the pulse information
+;    LASTRETURN: in, optional, type:boolean
+;     if setup then use the last return of the pulse information
+;
+; :Author: Antoine Cottin
+; 
+; :History:
+;   November 2015: initial implementation
+;   
+;-
 Function pulsewaves::getRawCoordinates, $
                      FIRSTRETURN = FIRSTRETURN, $
                      LASTRETURN = LASTRETURN
