@@ -882,8 +882,8 @@ Function pulsewaves::readVLR
             self.print,1, Strcompress("System pulse frequency: " + String(scannerKey.plsFreq) + " khz")
             self.print,1, Strcompress("System beam diameter at exit aperture: " + String(scannerKey.beamDiam) + " mm")
             self.print,1, Strcompress("System beam divergence: " + String(scannerKey.beamDiv) + " mrad")
-            self.print,1, Strcompress("System minimum range: " + String(scannerKey.minRange) + " mrad")
-            self.print,1, Strcompress("System maximum range: " + String(scannerKey.maxRange) + " mrad")
+            self.print,1, Strcompress("System minimum range: " + String(scannerKey.minRange) + " m")
+            self.print,1, Strcompress("System maximum range: " + String(scannerKey.maxRange) + " m")
             self.print,1, Strcompress("System description (id any): " + String(scannerKey.description))
   
             
